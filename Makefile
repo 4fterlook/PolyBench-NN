@@ -2,7 +2,7 @@
 
 CC := clang
 
-OUT_DIR := out/
+OUT_DIR := polybench/
 SRC_FILES := $(wildcard */*/*.c)
 SRC_FILES += $(wildcard */*/*/*.c)
 SRC_FILES := $(sort $(SRC_FILES))
