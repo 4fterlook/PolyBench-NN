@@ -100,7 +100,7 @@ static void kernel_fdtd_2d(int tmax,
 
   for (int t = 0; t < _PB_TMAX; t++)
   {
-    for (j = 0; j < _PB_NY; j++)
+    for (int j = 0; j < _PB_NY; j++)
       ey[0][j] = _fict_[t];
     for (int i = 1; i < _PB_NX; i++)
       for (int j = 0; j < _PB_NY; j++)

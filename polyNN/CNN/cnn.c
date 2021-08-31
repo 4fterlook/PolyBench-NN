@@ -149,6 +149,8 @@ int main(int argc, char **argv)
 	int nu = NU;
 	int nv = NV;
 
+	puts("start running cnn\n");
+	
 	/* Variable declaration/allocation. */
 	POLYBENCH_4D_ARRAY_DECL(out_F, DATA_TYPE, NN, NK, NP, NQ, nn, nk, np, nq);
 	POLYBENCH_4D_ARRAY_DECL(W, DATA_TYPE, NK, NC, NR, NS, nk, nc, nr, ns);
