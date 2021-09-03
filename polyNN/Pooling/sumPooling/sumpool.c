@@ -16,6 +16,7 @@
  *
  */
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
+#define MIN(x, y) (((x) > (y)) ? (y) : (x))
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
@@ -113,8 +114,8 @@ static void sumpool2d_forward(int nn, int nd, int ih, int iw, int ow, int oh, in
 				for (int c = 0; c < _PB_NC; c++)
 				{
 					DATA_TYPE val = 0;
-					for (int h = sh * r; h < min(sh * r + dh, ih); h++)
-						for (int w = sw * c; w < min(sw * c + dw, iw); w++)
+					for (int h = sh * r; h < MIN(sh * r + dh, ih); h++)
+						for (int w = sw * c; w < MIN(sw * c + dw, iw); w++)
 							val += inp_F[n][d][h][w];
 					out_F[n][d][r][c] = val;
 				}
@@ -138,8 +139,8 @@ static void sumpool2d_backward(int nn, int nd, int ih, int iw, int ow, int oh, i
 			{
 				for (int c = 0; c < _PB_NC; c++)
 				{
-					for (int h = sh * r; h < min(sh * r + dh, ih); h++)
-						for (int w = sw * c; w < min(sw * c + dw, iw); w++)
+					for (int h = sh * r; h < MIN(sh * r + dh, ih); h++)
+						for (int w = sw * c; w < MIN(sw * c + dw, iw); w++)
 							err_in[n][d][h][w] += err_out[n][d][r][c];
 				}
 			}
