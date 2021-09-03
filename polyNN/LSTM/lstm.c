@@ -232,58 +232,57 @@ static void lstm_backward(int nt, int np, int ns, int nq,
 													DATA_TYPE POLYBENCH_1D(del_o, NS, ns),
 													DATA_TYPE POLYBENCH_1D(del_g, NS, ns))
 {
-	int t, p, q, s, r;
 #pragma scop
 
-	for (t = _PB_T - 1; t > 0; t--)
+	for (int t = _PB_T - 1; t > 0; t--)
 	{
-		for (s = 0; s < _PB_S; s++)
+		for (int s = 0; s < _PB_S; s++)
 			del_o[s] = c_F[t][s] * del_S[t][s];
 
-		for (s = 0; s < _PB_S; s++)
+		for (int s = 0; s < _PB_S; s++)
 			del_C[t][s] += o[s] * del_S[t][s];
 
 		if (t > 0)
-			for (s = 0; s < _PB_S; s++)
+			for (int s = 0; s < _PB_S; s++)
 				del_f[s] = c_F[t - 1][s] * del_C[t][s];
 
 		if (t > 0)
-			for (s = 0; s < _PB_S; s++)
+			for (int s = 0; s < _PB_S; s++)
 				del_C[t - 1][s] = f[s] * del_C[t][s];
 
-		for (s = 0; s < _PB_S; s++)
+		for (int s = 0; s < _PB_S; s++)
 			del_i[s] = g[s] * del_C[t][s];
 
-		for (s = 0; s < _PB_S; s++)
+		for (int s = 0; s < _PB_S; s++)
 			del_g[s] = i[s] * del_C[t][s];
 
-		for (s = 0; s < _PB_S; s++)
+		for (int s = 0; s < _PB_S; s++)
 		{
-			for (p = 0; p < _PB_P; p++)
+			for (int p = 0; p < _PB_P; p++)
 			{
 				del_Ui[s][p] = inp_F[t][p] * i[s];
 			}
 		}
 
-		for (s = 0; s < _PB_S; s++)
+		for (int s = 0; s < _PB_S; s++)
 		{
-			for (p = 0; p < _PB_P; p++)
+			for (int p = 0; p < _PB_P; p++)
 			{
 				del_Uf[s][p] = inp_F[t][p] * f[s];
 			}
 		}
 
-		for (s = 0; s < _PB_S; s++)
+		for (int s = 0; s < _PB_S; s++)
 		{
-			for (p = 0; p < _PB_P; p++)
+			for (int p = 0; p < _PB_P; p++)
 			{
 				del_Uo[s][p] = inp_F[t][p] * o[s];
 			}
 		}
 
-		for (s = 0; s < _PB_S; s++)
+		for (int s = 0; s < _PB_S; s++)
 		{
-			for (p = 0; p < _PB_P; p++)
+			for (int p = 0; p < _PB_P; p++)
 			{
 				del_Ug[s][p] = inp_F[t][p] * g[s];
 			}
@@ -291,9 +290,9 @@ static void lstm_backward(int nt, int np, int ns, int nq,
 
 		if (t > 0)
 		{
-			for (s = 0; s < _PB_S; s++)
+			for (int s = 0; s < _PB_S; s++)
 			{
-				for (r = 0; r < _PB_S; r++)
+				for (int r = 0; r < _PB_S; r++)
 				{
 					del_Wi[s][r] = s_F[t - 1][r] * i[s];
 				}
@@ -302,9 +301,9 @@ static void lstm_backward(int nt, int np, int ns, int nq,
 
 		if (t > 0)
 		{
-			for (s = 0; s < _PB_S; s++)
+			for (int s = 0; s < _PB_S; s++)
 			{
-				for (r = 0; r < _PB_S; r++)
+				for (int r = 0; r < _PB_S; r++)
 				{
 					del_Wf[s][r] = s_F[t - 1][r] * f[s];
 				}
@@ -313,9 +312,9 @@ static void lstm_backward(int nt, int np, int ns, int nq,
 
 		if (t > 0)
 		{
-			for (s = 0; s < _PB_S; s++)
+			for (int s = 0; s < _PB_S; s++)
 			{
-				for (r = 0; r < _PB_S; r++)
+				for (int r = 0; r < _PB_S; r++)
 				{
 					del_Wo[s][r] = s_F[t - 1][r] * o[s];
 				}
@@ -324,9 +323,9 @@ static void lstm_backward(int nt, int np, int ns, int nq,
 
 		if (t > 0)
 		{
-			for (s = 0; s < _PB_S; s++)
+			for (int s = 0; s < _PB_S; s++)
 			{
-				for (r = 0; r < _PB_S; r++)
+				for (int r = 0; r < _PB_S; r++)
 				{
 					del_Wg[s][r] = s_F[t - 1][r] * g[s];
 				}
@@ -335,9 +334,9 @@ static void lstm_backward(int nt, int np, int ns, int nq,
 
 		if (t > 0)
 		{
-			for (s = 0; s < _PB_S; s++)
+			for (int s = 0; s < _PB_S; s++)
 			{
-				for (r = 0; r < _PB_S; r++)
+				for (int r = 0; r < _PB_S; r++)
 				{
 					del_S[t - 1][r] = W_i[r][s] * del_i[s] + W_f[r][s] * del_f[s] + W_o[r][s] * del_o[s] + W_g[r][s] * del_g[s];
 				}
