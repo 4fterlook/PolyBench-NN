@@ -3,7 +3,7 @@
 CC := clang
 TARGET_CPU ?= x86
 
-OUT_DIR := cache_based/
+OUT_DIR := prem_based/
 # SRC_FILES := $(wildcard */*/*.c)
 # SRC_FILES += $(wildcard */*/*/*.c)
 # SRC_FILES := $(filter-out medley/nussinov/Nussinov.orig.c, $(SRC_FILES))
@@ -20,11 +20,11 @@ ARM_CROSS_FLAGS := -target aarch64-linux-gnu $(CROSS_INCLUDE_FLAGS) $(CROSS_LD_F
 BENCH_SIZE ?= -DLARGE_DATASET
 POLLY_FLAGS = -DPOLYBENCH_USE_SCALAR_LB -DPOLYBENCH_TIME 
 POLLY_FLAGS += -O3 
-POLLY_FLAGS += -mllvm -polly 
-POLLY_FLAGS += -mllvm -polly-parallel 
-POLLY_FLAGS += -mllvm -polly-omp-backend=GNU 
-POLLY_FLAGS += -mllvm -polly-num-threads=4 
-POLLY_FLAGS += -mllvm -polly-scheduling=runtime 
+# POLLY_FLAGS += -mllvm -polly 
+# POLLY_FLAGS += -mllvm -polly-parallel 
+# POLLY_FLAGS += -mllvm -polly-omp-backend=GNU 
+# POLLY_FLAGS += -mllvm -polly-num-threads=4 
+# POLLY_FLAGS += -mllvm -polly-scheduling=runtime 
 LD_FLAGS := -lgomp -lm
 
 all :$(OUTS)

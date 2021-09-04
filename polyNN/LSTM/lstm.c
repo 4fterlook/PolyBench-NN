@@ -13,6 +13,8 @@
  *
  *
  */
+#define MAX(x, y) (((x) > (y)) ? (x) : (y))
+#define MIN(x, y) (((x) > (y)) ? (y) : (x))
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
