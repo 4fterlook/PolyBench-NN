@@ -23,7 +23,7 @@ POLLY_FLAGS += -O3
 POLLY_FLAGS += -mllvm -polly 
 POLLY_FLAGS += -mllvm -polly-parallel 
 POLLY_FLAGS += -mllvm -polly-omp-backend=GNU 
-POLLY_FLAGS += -mllvm -polly-num-threads=8 
+POLLY_FLAGS += -mllvm -polly-num-threads=4 
 POLLY_FLAGS += -mllvm -polly-scheduling=runtime 
 LD_FLAGS := -lgomp -lm
 
