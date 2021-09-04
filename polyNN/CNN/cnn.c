@@ -103,16 +103,20 @@ cnn_forward(int nn, int nk, int np, int nq, int nc, int nr, int ns, int nw,
       _pe = _PB_NP / 2, _qs = 0, _qe = _PB_NQ / 2;
   // LOAD_CNN_FORWARD
 #pragma scop
-  for (int n = _ns; n < _ne; n++)
-    for (int k = _ks; k < _ke; k++)
-      for (int p = _ps; p < _pe; p++)
-        for (int q = _qs; q < _qe; q++)
-          for (int ct = 0; ct < _PB_NC; ct += STEP_(ct))
-            for (int rt = 0; rt < _PB_NR; rt += STEP_(rt))
-              for (int st = 0; st < _PB_NS; st += STEP_(st))
-                for (int c = ct; c < MIN(_PB_NC, ct + STEP_(ct)); c++)
-                  for (int r = rt; r < MIN(_PB_NR, rt + STEP_(rt)); r++)
-                    for (int s = st; s < MIN(_PB_NS, st + STEP_(st)); s++) {
+  // for (int n = _ns; n < _ne; n++)
+  //   for (int k = _ks; k < _ke; k++)
+  //     for (int p = _ps; p < _pe; p++)
+  //       for (int q = _qs; q < _qe; q++)
+  for (int n = 0; n < _PB_NN; n++)
+    for (int k = 0; k < _PB_NK; k++)
+      for (int p = 0; p < _PB_NP; p++)
+        for (int q = 0; q < _PB_NQ; q++)
+          for (int ct = 0; ct < _PB_NC; ct += 38)//75
+            for (int rt = 0; rt < _PB_NR; rt += 3)//6
+              for (int st = 0; st < _PB_NS; st += 3)//6
+                for (int c = ct; c < MIN(_PB_NC, 38); c++)
+                  for (int r = rt; r < MIN(_PB_NR, 3); r++)
+                    for (int s = st; s < MIN(_PB_NS, 3); s++) {
                       /* Start timer. */
                       // polybench_start_instruments;
                       out_F[n][k][p][q] +=
@@ -136,20 +140,24 @@ void cnn_backward(int nn, int nk, int np, int nq, int nc, int nr, int ns,
       _he = _PB_NH / 2, _ws = 0, _we = _PB_NW / 2;
   // LOAD_CNN_BACKWARD
 #pragma scop
+  // for (int n = _ns; n < _ne; n++)
+  //   for (int c = _cs; c < _ce; c++)
+  //     for (int h = _hs; h < _he; h++)
+  //       for (int w = _ws; w < _we; w++)
   for (int n = 0; n < _PB_NN; n++)
     for (int c = 0; c < _PB_NC; c++)
       for (int h = 0; h < _PB_NH; h++)
         for (int w = 0; w < _PB_NW; w++)
-          for (int kt = 0; kt < _PB_NK; kt += STEP_(kt))
-            for (int rt = 0; rt < _PB_NR; rt += STEP_(rt))
-              for (int st = 0; st < _PB_NS; st += STEP_(st))
-                for (int pt = 0; pt < _PB_NP; pt += STEP_(pt))
-                  for (int qt = 0; qt < _PB_NQ; qt += STEP_(qt))
-                    for (int k = kt; k < MIN(_PB_NK, kt + STEP_(kt)); k++)
-                      for (int r = rt; r < MIN(_PB_NR, rt + STEP_(rt)); r++)
-                        for (int s = st; s < MIN(_PB_NS, st + STEP_(st)); s++)
-                          for (int p = pt; p < MIN(_PB_NP, pt + STEP_(pt)); p++)
-                            for (int q = qt; q < MIN(_PB_NQ, qt + STEP_(qt));
+          for (int kt = 0; kt < _PB_NK; kt += 20)//40
+            for (int rt = 0; rt < _PB_NR; rt += 3)//6
+              for (int st = 0; st < _PB_NS; st += 3)//6
+                for (int pt = 0; pt < _PB_NP; pt += 5)//9
+                  for (int qt = 0; qt < _PB_NQ; qt += 5)//9
+                    for (int k = kt; k < MIN(_PB_NK, 20); k++)
+                      for (int r = rt; r < MIN(_PB_NR, 3); r++)
+                        for (int s = st; s < MIN(_PB_NS, 3); s++)
+                          for (int p = pt; p < MIN(_PB_NP, 5); p++)
+                            for (int q = qt; q < MIN(_PB_NQ, 5);
                                  q++)
                               if ((NU * p - (h - NR + r + 1) == 0) &&
                                   (NU * q - (w - NS + s + 1) == 0)) {
