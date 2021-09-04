@@ -22,9 +22,9 @@ POLLY_FLAGS = -DPOLYBENCH_USE_SCALAR_LB -DPOLYBENCH_TIME
 POLLY_FLAGS += -O3 
 POLLY_FLAGS += -mllvm -polly 
 POLLY_FLAGS += -mllvm -polly-parallel 
-POLLY_FLAGS += -mllvm -polly-omp-backend=GNU 
-POLLY_FLAGS += -mllvm -polly-num-threads=4 
-POLLY_FLAGS += -mllvm -polly-scheduling=runtime 
+# POLLY_FLAGS += -mllvm -polly-omp-backend=GNU 
+# POLLY_FLAGS += -mllvm -polly-num-threads=4 
+# POLLY_FLAGS += -mllvm -polly-scheduling=runtime 
 LD_FLAGS := -lgomp -lm
 
 all :$(OUTS)
