@@ -22,7 +22,7 @@
 #include <string.h>
 #include <math.h>
 
-#define LKMC_M5OPS_ENABLE 1
+#define LKMC_M5OPS_ENABLE 0
 #include <m5ops.h>
 
 /* Include polybench common header. */
