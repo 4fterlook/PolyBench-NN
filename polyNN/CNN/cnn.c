@@ -99,8 +99,8 @@ cnn_forward(int nn, int nk, int np, int nq, int nc, int nr, int ns, int nw,
             DATA_TYPE POLYBENCH_4D(out_F, NN, NK, NP, NQ, nn, nk, np, nq),
             DATA_TYPE POLYBENCH_4D(W, NK, NC, NR, NS, nk, nc, nr, ns),
             DATA_TYPE POLYBENCH_4D(inp_F, NN, NC, NH, NW, nn, nc, nh, nw)) {
-  int _ns = 0, _ne = _PB_NN / 2, _ks = 0, _ke = _PB_NK / 1, _ps = 0,
-      _pe = _PB_NP / 2, _qs = 0, _qe = _PB_NQ / 2;
+  // int _ns = 0, _ne = _PB_NN / 2, _ks = 0, _ke = _PB_NK / 1, _ps = 0,
+  //     _pe = _PB_NP / 2, _qs = 0, _qe = _PB_NQ / 2;
   // LOAD_CNN_FORWARD
 #pragma scop
   // for (int n = _ns; n < _ne; n++)
@@ -110,13 +110,16 @@ cnn_forward(int nn, int nk, int np, int nq, int nc, int nr, int ns, int nw,
   for (int n = 0; n < _PB_NN; n++)
     for (int k = 0; k < _PB_NK; k++)
       for (int p = 0; p < _PB_NP; p++)
-        for (int q = 0; q < _PB_NQ; q++)
-          for (int ct = 0; ct < _PB_NC; ct += 38)//75
-            for (int rt = 0; rt < _PB_NR; rt += 3)//6
-              for (int st = 0; st < _PB_NS; st += 3)//6
-                for (int c = ct; c < MIN(_PB_NC, 38); c++)
-                  for (int r = rt; r < MIN(_PB_NR, 3); r++)
-                    for (int s = st; s < MIN(_PB_NS, 3); s++) {
+        for (int q = 0; q < _PB_NQ; q++) {
+          for (int ct = 0; ct < _PB_NC; ct += 75)    // 75
+            for (int rt = 0; rt < _PB_NR; rt += 6)   // 6
+              for (int st = 0; st < _PB_NS; st += 6) // 6
+                for (int c = ct; c < MIN(_PB_NC, ct + 75); c++)
+                  for (int r = rt; r < MIN(_PB_NR, rt + 6); r++)
+                    for (int s = st; s < MIN(_PB_NS, st + 6); s++) {
+                      // if (n==0&&k==0&&p==0&&q==0){
+                      //   printf("c: %d, r: %d, s: %d\n",c,r,s);
+                      // }
                       /* Start timer. */
                       // polybench_start_instruments;
                       out_F[n][k][p][q] +=
@@ -126,6 +129,7 @@ cnn_forward(int nn, int nk, int np, int nq, int nc, int nr, int ns, int nw,
                       // polybench_stop_instruments;
                       // polybench_print_instruments;
                     }
+        }
 #pragma endscop
 }
 
@@ -136,8 +140,8 @@ void cnn_backward(int nn, int nk, int np, int nq, int nc, int nr, int ns,
                   DATA_TYPE POLYBENCH_4D(W, NK, NC, NR, NS, nk, nc, nr, ns),
                   DATA_TYPE POLYBENCH_4D(err_in, NN, NC, NH, NW, nn, nc, nh,
                                          nw)) {
-  int _ns = 0, _ne = _PB_NN / 2, _cs = 0, _ce = _PB_NC / 1, _hs = 0,
-      _he = _PB_NH / 2, _ws = 0, _we = _PB_NW / 2;
+  // int _ns = 0, _ne = _PB_NN / 2, _cs = 0, _ce = _PB_NC / 1, _hs = 0,
+  // _he = _PB_NH / 2, _ws = 0, _we = _PB_NW / 2;
   // LOAD_CNN_BACKWARD
 #pragma scop
   // for (int n = _ns; n < _ne; n++)
@@ -148,17 +152,18 @@ void cnn_backward(int nn, int nk, int np, int nq, int nc, int nr, int ns,
     for (int c = 0; c < _PB_NC; c++)
       for (int h = 0; h < _PB_NH; h++)
         for (int w = 0; w < _PB_NW; w++)
-          for (int kt = 0; kt < _PB_NK; kt += 20)//40
-            for (int rt = 0; rt < _PB_NR; rt += 3)//6
-              for (int st = 0; st < _PB_NS; st += 3)//6
-                for (int pt = 0; pt < _PB_NP; pt += 5)//9
-                  for (int qt = 0; qt < _PB_NQ; qt += 5)//9
-                    for (int k = kt; k < MIN(_PB_NK, 20); k++)
-                      for (int r = rt; r < MIN(_PB_NR, 3); r++)
-                        for (int s = st; s < MIN(_PB_NS, 3); s++)
-                          for (int p = pt; p < MIN(_PB_NP, 5); p++)
-                            for (int q = qt; q < MIN(_PB_NQ, 5);
-                                 q++)
+          // int n = 0, c = 0, h = 0, w = 0;
+          for (int kt = 0; kt < _PB_NK; kt += 40)          // 40
+            for (int rt = 0; rt < _PB_NR; rt += 6)         // 6
+              for (int st = 0; st < _PB_NS; st += 6)       // 6
+                for (int pt = 0; pt < _PB_NP; pt += 9)     // 9
+                  for (int qt = 0; qt < _PB_NQ; qt += 9) { // 9
+                    // polybench_start_instruments;
+                    for (int k = kt; k < MIN(_PB_NK, kt + 40); k++)
+                      for (int r = rt; r < MIN(_PB_NR, rt + 6); r++)
+                        for (int s = st; s < MIN(_PB_NS, st + 6); s++)
+                          for (int p = pt; p < MIN(_PB_NP, pt + 9); p++)
+                            for (int q = qt; q < MIN(_PB_NQ, qt + 9); q++)
                               if ((NU * p - (h - NR + r + 1) == 0) &&
                                   (NU * q - (w - NS + s + 1) == 0)) {
                                 /* Start timer. */
@@ -169,6 +174,8 @@ void cnn_backward(int nn, int nk, int np, int nq, int nc, int nr, int ns,
                                 // polybench_stop_instruments;
                                 // polybench_print_instruments;
                               }
+                  }
+
 #pragma endscop
 }
 
@@ -210,16 +217,15 @@ int main(int argc, char **argv) {
              POLYBENCH_ARRAY(W), POLYBENCH_ARRAY(inp_F),
              POLYBENCH_ARRAY(err_in), POLYBENCH_ARRAY(err_out));
 
-
   polybench_start_instruments;
 
 #if (LKMC_M5OPS_ENABLE)
   LKMC_M5OPS_RESETSTATS;
 #endif
   /* Run kernel. */
-  cnn_forward(nn, nk, np, nq, nc, nr, ns, nw, nh, nu, nv,
-              POLYBENCH_ARRAY(out_F), POLYBENCH_ARRAY(W),
-              POLYBENCH_ARRAY(inp_F));
+  // cnn_forward(nn, nk, np, nq, nc, nr, ns, nw, nh, nu, nv,
+  //             POLYBENCH_ARRAY(out_F), POLYBENCH_ARRAY(W),
+  //             POLYBENCH_ARRAY(inp_F));
 
   cnn_backward(nn, nk, np, nq, nc, nr, ns, nw, nh, nu, nv,
                POLYBENCH_ARRAY(err_out), POLYBENCH_ARRAY(W),
