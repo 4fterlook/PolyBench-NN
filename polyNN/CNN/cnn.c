@@ -22,7 +22,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#define LKMC_M5OPS_ENABLE 0
 #include <m5ops.h>
 
 /* Include polybench common header. */
@@ -102,15 +101,23 @@ cnn_forward(int nn, int nk, int np, int nq, int nc, int nr, int ns, int nw,
   // int _ns = 0, _ne = _PB_NN / 2, _ks = 0, _ke = _PB_NK / 1, _ps = 0,
   //     _pe = _PB_NP / 2, _qs = 0, _qe = _PB_NQ / 2;
   // LOAD_CNN_FORWARD
+#ifdef CNN_FORWARD_TIMER
+  polybench_start_instruments;
+#endif
+
 #pragma scop
   // for (int n = _ns; n < _ne; n++)
   //   for (int k = _ks; k < _ke; k++)
   //     for (int p = _ps; p < _pe; p++)
   //       for (int q = _qs; q < _qe; q++)
-  for (int n = 0; n < _PB_NN; n++)
-    for (int k = 0; k < _PB_NK; k++)
-      for (int p = 0; p < _PB_NP; p++)
-        for (int q = 0; q < _PB_NQ; q++) {
+  // for (int n = 0; n < _PB_NN; n++)
+  //   for (int k = 0; k < _PB_NK; k++)
+  //     for (int p = 0; p < _PB_NP; p++)
+  //       for (int q = 0; q < _PB_NQ; q++)
+          int n = 0, k = 0, p = 0, q = 0;
+          // int n = 49, k = 39, p = 8, q = 8;
+          // int n = 25, k = 20, p = 5, q = 5;
+          // int n = 20, k = 15, p = 3, q = 4;
           for (int ct = 0; ct < _PB_NC; ct += 75)    // 75
             for (int rt = 0; rt < _PB_NR; rt += 6)   // 6
               for (int st = 0; st < _PB_NS; st += 6) // 6
@@ -129,9 +136,22 @@ cnn_forward(int nn, int nk, int np, int nq, int nc, int nr, int ns, int nw,
                       // polybench_stop_instruments;
                       // polybench_print_instruments;
                     }
-        }
 #pragma endscop
+
+#ifdef CNN_FORWARD_TIMER
+  polybench_stop_instruments;
+  polybench_print_instruments;
+#endif
 }
+
+static int kernel_count = 0;
+static int loop_count = 0;
+
+#define cnn_backward_tile_k 10
+#define cnn_backward_tile_r 1
+#define cnn_backward_tile_s 3
+#define cnn_backward_tile_p 6
+#define cnn_backward_tile_q 6
 
 void cnn_backward(int nn, int nk, int np, int nq, int nc, int nr, int ns,
                   int nw, int nh, int u, int v,
@@ -143,40 +163,56 @@ void cnn_backward(int nn, int nk, int np, int nq, int nc, int nr, int ns,
   // int _ns = 0, _ne = _PB_NN / 2, _cs = 0, _ce = _PB_NC / 1, _hs = 0,
   // _he = _PB_NH / 2, _ws = 0, _we = _PB_NW / 2;
   // LOAD_CNN_BACKWARD
+
+#ifdef CNN_BACKWARD_TIMER
+  polybench_start_instruments;
+#endif
+
 #pragma scop
   // for (int n = _ns; n < _ne; n++)
   //   for (int c = _cs; c < _ce; c++)
   //     for (int h = _hs; h < _he; h++)
   //       for (int w = _ws; w < _we; w++)
-  for (int n = 0; n < _PB_NN; n++)
-    for (int c = 0; c < _PB_NC; c++)
-      for (int h = 0; h < _PB_NH; h++)
-        for (int w = 0; w < _PB_NW; w++)
-          // int n = 0, c = 0, h = 0, w = 0;
-          for (int kt = 0; kt < _PB_NK; kt += 40)          // 40
-            for (int rt = 0; rt < _PB_NR; rt += 6)         // 6
-              for (int st = 0; st < _PB_NS; st += 6)       // 6
-                for (int pt = 0; pt < _PB_NP; pt += 9)     // 9
-                  for (int qt = 0; qt < _PB_NQ; qt += 9) { // 9
+  // for (int n = 0; n < _PB_NN; n++)
+  //   for (int c = 0; c < _PB_NC; c++)
+  //     for (int h = 0; h < _PB_NH; h++)
+  //       for (int w = 0; w < _PB_NW; w++)
+          int n = 0, c = 0, h = 0, w = 0;
+          // int n = 25, c = 37, h = 25, w = 25;
+          // int n = 20, c = 20, h = 20, w = 20;
+          // int n = 49, c = 74, h = 49, w = 49;
+          for (int kt = 0; kt < _PB_NK; kt += cnn_backward_tile_k)          // 40
+            for (int rt = 0; rt < _PB_NR; rt += cnn_backward_tile_r)         // 6
+              for (int st = 0; st < _PB_NS; st += cnn_backward_tile_s)       // 6
+                for (int pt = 0; pt < _PB_NP; pt += cnn_backward_tile_p)     // 9
+                  for (int qt = 0; qt < _PB_NQ; qt += cnn_backward_tile_q) { // 9
                     // polybench_start_instruments;
-                    for (int k = kt; k < MIN(_PB_NK, kt + 40); k++)
-                      for (int r = rt; r < MIN(_PB_NR, rt + 6); r++)
-                        for (int s = st; s < MIN(_PB_NS, st + 6); s++)
-                          for (int p = pt; p < MIN(_PB_NP, pt + 9); p++)
-                            for (int q = qt; q < MIN(_PB_NQ, qt + 9); q++)
+                    for (int k = kt; k < MIN(_PB_NK, kt + cnn_backward_tile_k); k++)
+                      for (int r = rt; r < MIN(_PB_NR, rt + cnn_backward_tile_r); r++)
+                        for (int s = st; s < MIN(_PB_NS, st + cnn_backward_tile_s); s++)
+                          for (int p = pt; p < MIN(_PB_NP, pt + cnn_backward_tile_p); p++)
+                            for (int q = qt; q < MIN(_PB_NQ, qt + cnn_backward_tile_q); q++){
                               if ((NU * p - (h - NR + r + 1) == 0) &&
                                   (NU * q - (w - NS + s + 1) == 0)) {
                                 /* Start timer. */
                                 // polybench_start_instruments;
                                 err_in[n][c][h][w] +=
                                     W[k][c][r][s] * err_out[n][k][p][q];
+                                kernel_count++;
                                 /* Stop and print timer. */
                                 // polybench_stop_instruments;
                                 // polybench_print_instruments;
                               }
+                              loop_count++;
+                            }
                   }
 
 #pragma endscop
+
+#ifdef CNN_BACKWARD_TIMER
+  polybench_stop_instruments;
+  polybench_print_instruments;
+#endif
 }
 
 int main(int argc, char **argv) {
@@ -217,26 +253,39 @@ int main(int argc, char **argv) {
              POLYBENCH_ARRAY(W), POLYBENCH_ARRAY(inp_F),
              POLYBENCH_ARRAY(err_in), POLYBENCH_ARRAY(err_out));
 
-  polybench_start_instruments;
 
-#if (LKMC_M5OPS_ENABLE)
+#ifdef CNN_ALL_TIMER
+  polybench_start_instruments;
+#endif
+
+#ifdef LKMC_M5OPS_ENABLE
   LKMC_M5OPS_RESETSTATS;
 #endif
-  /* Run kernel. */
-  // cnn_forward(nn, nk, np, nq, nc, nr, ns, nw, nh, nu, nv,
-  //             POLYBENCH_ARRAY(out_F), POLYBENCH_ARRAY(W),
-  //             POLYBENCH_ARRAY(inp_F));
 
+#if defined(CNN_ALL_TIMER) || defined(CNN_FORWARD_TIMER)
+  /* Run kernel. */
+  cnn_forward(nn, nk, np, nq, nc, nr, ns, nw, nh, nu, nv,
+              POLYBENCH_ARRAY(out_F), POLYBENCH_ARRAY(W),
+              POLYBENCH_ARRAY(inp_F));
+#endif
+
+#if defined(CNN_ALL_TIMER) || defined(CNN_BACKWARD_TIMER)
   cnn_backward(nn, nk, np, nq, nc, nr, ns, nw, nh, nu, nv,
                POLYBENCH_ARRAY(err_out), POLYBENCH_ARRAY(W),
                POLYBENCH_ARRAY(err_in));
+#endif
 
-#if (LKMC_M5OPS_ENABLE)
+#ifdef LKMC_M5OPS_ENABLE
   LKMC_M5OPS_DUMPSTATS;
 #endif
 
-  polybench_stop_instruments;
-  polybench_print_instruments;
+#ifdef CNN_ALL_TIMER
+  // polybench_stop_instruments;
+  // polybench_print_instruments;
+#endif
+
+  printf("kernel count: %d\n",kernel_count);
+  printf("loop count: %d\n", loop_count);
 
   /* Prevent dead-code elimination. All live-out data must be printed
      by the function call in argument. */

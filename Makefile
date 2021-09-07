@@ -18,7 +18,8 @@ CROSS_LD_FLAGS := -B /usr/lib/gcc-cross/aarch64-linux-gnu/9 -L /usr/lib/gcc-cros
 ARM_CROSS_FLAGS := -target aarch64-linux-gnu $(CROSS_INCLUDE_FLAGS) $(CROSS_LD_FLAGS)
 
 BENCH_SIZE ?= -DLARGE_DATASET
-POLLY_FLAGS = -DPOLYBENCH_USE_SCALAR_LB -DPOLYBENCH_TIME -DPOLYBENCH_CYCLE_ACCURATE_TIMER
+POLLY_FLAGS = -DPOLYBENCH_USE_SCALAR_LB -DPOLYBENCH_TIME 
+POLLY_FLAGS += -DPOLYBENCH_CYCLE_ACCURATE_TIMER
 # POLLY_FLAGS += -DPOLYBENCH_DUMP_ARRAYS
 POLLY_FLAGS += -O3 
 # POLLY_FLAGS += -mllvm -polly 
@@ -35,10 +36,10 @@ $(OUTS) :$(OUT_DIR)%.out : %.c utilities/polybench.c
 	@mkdir -p $(dir $@)
 ifeq ($(TARGET_CPU), aarch64)
 	@echo "building $< in arm"
-	$(CC) $(ARM_CROSS_FLAGS) -I utilities/ -I $(dir $<) $(BENCH_SIZE) $(POLLY_FLAGS) $< utilities/polybench.c -o $@ $(LD_FLAGS)
+	@$(CC) $(ARM_CROSS_FLAGS) -I utilities/ -I $(dir $<) $(BENCH_SIZE) $(POLLY_FLAGS) $< utilities/polybench.c -o $@ $(LD_FLAGS)
 else ifeq ($(TARGET_CPU), x86)
 	@echo "building $< in x86"
-	$(CC) -I utilities/ -I $(dir $<) $(BENCH_SIZE) $(POLLY_FLAGS) $< utilities/polybench.c -o $@ $(LD_FLAGS)
+	@$(CC) -I utilities/ -I $(dir $<) $(BENCH_SIZE) $(POLLY_FLAGS) $< utilities/polybench.c -o $@ $(LD_FLAGS)
 else
 	@(echo "Unknown cpu target, not supported yet."; exit 1)
 endif
