@@ -20,7 +20,6 @@
 #include <string.h>
 #include <math.h>
 
-#define LKMC_M5OPS_ENABLE 0
 #include <m5ops.h>
 
 /* Include polybench common header. */
@@ -29,6 +28,8 @@
 /* Include benchmark-specific header. */
 /* Default data type is double, default size is N=1024. */
 #include "lstm.h"
+
+#define M5OPS_TIMER
 
 /* Array initialization. */
 static void init_array(int nt, int np, int ns, int nq,
@@ -427,9 +428,9 @@ int main(int argc, char **argv)
 						 POLYBENCH_ARRAY(del_g));
 
 	/* Start timer. */
+#ifndef M5OPS_TIMER
 	polybench_start_instruments;
-
-#if(LKMC_M5OPS_ENABLE)
+#else
   LKMC_M5OPS_RESETSTATS;
 #endif
 
@@ -482,13 +483,13 @@ int main(int argc, char **argv)
 								POLYBENCH_ARRAY(del_o),
 								POLYBENCH_ARRAY(del_g));
 
-#if(LKMC_M5OPS_ENABLE)
-  LKMC_M5OPS_DUMPSTATS;
-#endif
-
 	/* Stop and print timer. */
+#ifndef M5OPS_TIMER
 	polybench_stop_instruments;
 	polybench_print_instruments;
+#else
+  LKMC_M5OPS_DUMPSTATS;
+#endif
 
 	/* Prevent dead-code elimination. All live-out data must be printed
 	   by the function call in argument. */

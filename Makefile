@@ -17,9 +17,9 @@ CROSS_INCLUDE_FLAGS := -I /usr/aarch64-linux-gnu/include/
 CROSS_LD_FLAGS := -B /usr/lib/gcc-cross/aarch64-linux-gnu/9 -L /usr/lib/gcc-cross/aarch64-linux-gnu/9 -L /usr/aarch64-linux-gnu/lib
 ARM_CROSS_FLAGS := -target aarch64-linux-gnu $(CROSS_INCLUDE_FLAGS) $(CROSS_LD_FLAGS)
 
-BENCH_SIZE ?= -DLARGE_DATASET
+BENCH_SIZE ?= -DMINI_DATASET
 POLLY_FLAGS = -DPOLYBENCH_USE_SCALAR_LB -DPOLYBENCH_TIME 
-POLLY_FLAGS += -DPOLYBENCH_CYCLE_ACCURATE_TIMER
+# POLLY_FLAGS += -DPOLYBENCH_CYCLE_ACCURATE_TIMER
 POLLY_FLAGS += -DPOLYBENCH_NO_FLUSH_CACHE
 # POLLY_FLAGS += -DPOLYBENCH_DUMP_ARRAYS
 POLLY_FLAGS += -O3 
@@ -28,7 +28,7 @@ POLLY_FLAGS += -O3
 # POLLY_FLAGS += -mllvm -polly-omp-backend=GNU 
 # POLLY_FLAGS += -mllvm -polly-num-threads=4 
 # POLLY_FLAGS += -mllvm -polly-scheduling=runtime 
-LD_FLAGS := -lgomp -lm
+LD_FLAGS := -static -lm
 
 all :$(OUTS)
 	@echo "Building done."
