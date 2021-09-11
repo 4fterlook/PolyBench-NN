@@ -173,7 +173,7 @@ cnn_forward(int nn, int nk, int np, int nq, int nc, int nr, int ns, int nw,
 #endif
 
 #if defined(CNN_ALL) || defined(CNN_BACKWARD)
-void cnn_backward(int nn, int nk, int np, int nq, int nc, int nr, int ns,
+static void cnn_backward(int nn, int nk, int np, int nq, int nc, int nr, int ns,
                   int nw, int nh, int u, int v,
                   DATA_TYPE POLYBENCH_4D(err_out, NN, NK, NP, NQ, nn, nk, np,
                                          nq),
