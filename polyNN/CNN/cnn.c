@@ -104,7 +104,7 @@ static void cnn_forward(int nn, int nk, int np, int nq, int nc, int nr, int ns, 
 #pragma endscop
 }
 
-void cnn_backward(int nn, int nk, int np, int nq, int nc, int nr, int ns, int nw, int nh, int u, int v,
+static void cnn_backward(int nn, int nk, int np, int nq, int nc, int nr, int ns, int nw, int nh, int u, int v,
 									DATA_TYPE POLYBENCH_4D(err_out, NN, NK, NP, NQ, nn, nk, np, nq),
 									DATA_TYPE POLYBENCH_4D(W, NK, NC, NR, NS, nk, nc, nr, ns),
 									DATA_TYPE POLYBENCH_4D(err_in, NN, NC, NH, NW, nn, nc, nh, nw))
