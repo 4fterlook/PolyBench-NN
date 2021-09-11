@@ -32,6 +32,7 @@
 /* Default data type is double, default size is N=1024. */
 #include "cnn.h"
 
+#define CNN_FORWARD
 #define CNN_FORWARD_TIMER
 #define M5OPS_TIMER
 
@@ -44,9 +45,9 @@ static int loop_count = 0;
 #define cnn_backward_tile_p 6  /*max size is 40 in large*/
 #define cnn_backward_tile_q 6  /*max size is 40 in large*/
 
-#define cnn_forward_tile_c 35 /*max size is 75 in large*/
-#define cnn_forward_tile_r 3 /*max size is 6 in large*/
-#define cnn_forward_tile_s 3  /*max size is 6 in large*/
+#define cnn_forward_tile_c 38 /*max size is 75 in large, 20 in small, 10 in mini*/
+#define cnn_forward_tile_r 3 /*max size is 6 in large, 4 in small, 3 in mini*/
+#define cnn_forward_tile_s 3 /*max size is 6 in large, 4 in small, 3 in mini*/
 
 
 /* Array initialization. */
@@ -105,6 +106,7 @@ static void print_array(int nn, int nk, int np, int nq,
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
+#if defined(CNN_ALL) || defined(CNN_FORWARD)
 static void
 cnn_forward(int nn, int nk, int np, int nq, int nc, int nr, int ns, int nw,
             int nh, int u, int v,
@@ -113,6 +115,7 @@ cnn_forward(int nn, int nk, int np, int nq, int nc, int nr, int ns, int nw,
             DATA_TYPE POLYBENCH_4D(inp_F, NN, NC, NH, NW, nn, nc, nh, nw)) {
   // int _ns = 0, _ne = _PB_NN / 2, _ks = 0, _ke = _PB_NK / 1, _ps = 0,
   //     _pe = _PB_NP / 2, _qs = 0, _qe = _PB_NQ / 2;
+  printf("This is forward\n");
 
 #pragma scop
   // for (int n = _ns; n < _ne; n++)
@@ -124,10 +127,9 @@ cnn_forward(int nn, int nk, int np, int nq, int nc, int nr, int ns, int nw,
   //   for (int k = 0; k < _PB_NK; k++)
   //     for (int p = 0; p < _PB_NP; p++)
   //       for (int q = 0; q < _PB_NQ; q++)
-
           // int n = 0, k = 0, p = 0, q = 0;
-          int n = 48, k = 38, p = 7, q = 7;
-          // int n = 25, k = 20, p = 5, q = 5;
+          // int n = 9, k = 14, p = 5, q = 5;
+          int n = 25, k = 20, p = 5, q = 5;
           // int n = 20, k = 15, p = 3, q = 4;
         #ifdef CNN_FORWARD_TIMER
           #ifndef M5OPS_TIMER
@@ -168,7 +170,9 @@ cnn_forward(int nn, int nk, int np, int nq, int nc, int nr, int ns, int nw,
         #endif
 #pragma endscop
 }
+#endif
 
+#if defined(CNN_ALL) || defined(CNN_BACKWARD)
 void cnn_backward(int nn, int nk, int np, int nq, int nc, int nr, int ns,
                   int nw, int nh, int u, int v,
                   DATA_TYPE POLYBENCH_4D(err_out, NN, NK, NP, NQ, nn, nk, np,
@@ -183,6 +187,7 @@ void cnn_backward(int nn, int nk, int np, int nq, int nc, int nr, int ns,
 #ifdef CNN_BACKWARD_TIMER
   polybench_start_instruments;
 #endif
+  printf("This is backward\n");
 
 #pragma scop
   // for (int n = _ns; n < _ne; n++)
@@ -231,6 +236,7 @@ void cnn_backward(int nn, int nk, int np, int nq, int nc, int nr, int ns,
 #endif
 
 }
+#endif
 
 int main(int argc, char **argv) {
   /* Retrieve problem size.
@@ -244,6 +250,7 @@ int main(int argc, char **argv) {
      nh -> Input matrix height
      nw -> Input matrix width
    */
+  printf("Start running cnn\n");
   int nn = NN;
   int nk = NK;
   int np = NP;
@@ -255,8 +262,6 @@ int main(int argc, char **argv) {
   int nh = NH;
   int nu = NU;
   int nv = NV;
-
-  puts("start running cnn\n");
 
   /* Variable declaration/allocation. */
   POLYBENCH_4D_ARRAY_DECL(out_F, DATA_TYPE, NN, NK, NP, NQ, nn, nk, np, nq);
@@ -275,14 +280,14 @@ int main(int argc, char **argv) {
   polybench_start_instruments;
 #endif
 
-#if defined(CNN_ALL_TIMER) || defined(CNN_FORWARD_TIMER)
+#if defined(CNN_ALL) || defined(CNN_FORWARD)
   /* Run kernel. */
   cnn_forward(nn, nk, np, nq, nc, nr, ns, nw, nh, nu, nv,
               POLYBENCH_ARRAY(out_F), POLYBENCH_ARRAY(W),
               POLYBENCH_ARRAY(inp_F));
 #endif
 
-#if defined(CNN_ALL_TIMER) || defined(CNN_BACKWARD_TIMER)
+#if defined(CNN_ALL) || defined(CNN_BACKWARD)
   /* Run kernel. */
   cnn_backward(nn, nk, np, nq, nc, nr, ns, nw, nh, nu, nv,
                POLYBENCH_ARRAY(err_out), POLYBENCH_ARRAY(W),

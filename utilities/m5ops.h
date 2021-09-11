@@ -3,6 +3,8 @@
 #ifndef LKMC_M5OPS_H
 #define LKMC_M5OPS_H
 
+#define LKMC_M5OPS_ENABLE 1
+
 #if LKMC_M5OPS_ENABLE
 
 #if defined(__x86_64__)
