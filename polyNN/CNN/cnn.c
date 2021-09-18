@@ -34,7 +34,6 @@
 
 #define CNN_FORWARD
 #define CNN_FORWARD_TIMER
-#define M5OPS_TIMER
 
 static int kernel_count = 0;
 static int loop_count = 0;
@@ -45,7 +44,7 @@ static int loop_count = 0;
 #define cnn_backward_tile_p 6  /*max size is 40 in large*/
 #define cnn_backward_tile_q 6  /*max size is 40 in large*/
 
-#define cnn_forward_tile_c 38 /*max size is 75 in large, 20 in small, 10 in mini*/
+#define cnn_forward_tile_c 25 /*max size is 75 in large, 20 in small, 10 in mini*/
 #define cnn_forward_tile_r 3 /*max size is 6 in large, 4 in small, 3 in mini*/
 #define cnn_forward_tile_s 3 /*max size is 6 in large, 4 in small, 3 in mini*/
 
@@ -106,67 +105,61 @@ static void print_array(int nn, int nk, int np, int nq,
 
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
-#if defined(CNN_ALL) || defined(CNN_FORWARD)
-static void
-cnn_forward(int nn, int nk, int np, int nq, int nc, int nr, int ns, int nw,
+#if defined(CNN_ALL) || defined(CNN_FORWARD) 
+void cnn_forward(int nn, int nk, int np, int nq, int nc, int nr, int ns, int nw,
             int nh, int u, int v,
             DATA_TYPE POLYBENCH_4D(out_F, NN, NK, NP, NQ, nn, nk, np, nq),
             DATA_TYPE POLYBENCH_4D(W, NK, NC, NR, NS, nk, nc, nr, ns),
             DATA_TYPE POLYBENCH_4D(inp_F, NN, NC, NH, NW, nn, nc, nh, nw)) {
   // int _ns = 0, _ne = _PB_NN / 2, _ks = 0, _ke = _PB_NK / 1, _ps = 0,
   //     _pe = _PB_NP / 2, _qs = 0, _qe = _PB_NQ / 2;
-  printf("This is forward\n");
+  int _ns = 0, _ne = 4, _ks = 0, _ke = 1, _ps = 0,
+      _pe = 1, _qs = 0, _qe = 1;
+  // printf("This is forward\n");
 
 #pragma scop
-  // for (int n = _ns; n < _ne; n++)
-  //   for (int k = _ks; k < _ke; k++)
-  //     for (int p = _ps; p < _pe; p++)
-  //       for (int q = _qs; q < _qe; q++)
 
+        #ifdef CNN_FORWARD_TIMER
+            LKMC_M5OPS_RESETSTATS;
+        #endif
+  for (int n = _ns; n < _ne; n++)
+    for (int k = _ks; k < _ke; k++)
+      for (int p = _ps; p < _pe; p++)
+        for (int q = _qs; q < _qe; q++){
   // for (int n = 0; n < _PB_NN; n++)
   //   for (int k = 0; k < _PB_NK; k++)
   //     for (int p = 0; p < _PB_NP; p++)
-  //       for (int q = 0; q < _PB_NQ; q++)
+  //       for (int q = 0; q < _PB_NQ; q++){
           // int n = 0, k = 0, p = 0, q = 0;
           // int n = 9, k = 14, p = 5, q = 5;
-          int n = 25, k = 20, p = 5, q = 5;
+          // int n = 25, k = 20, p = 5, q = 5;
           // int n = 20, k = 15, p = 3, q = 4;
-        #ifdef CNN_FORWARD_TIMER
-          #ifndef M5OPS_TIMER
-            polybench_start_instruments;
-          #else
-            LKMC_M5OPS_RESETSTATS;
-          #endif
-        #endif
+          DATA_TYPE mask[2];
+          int mask_cnt = 0;
           for (int ct = 0; ct < _PB_NC; ct += cnn_forward_tile_c)
             for (int rt = 0; rt < _PB_NR; rt += cnn_forward_tile_r)
               for (int st = 0; st < _PB_NS; st += cnn_forward_tile_s){
         #ifdef CNN_FORWARD_TIMER
-          #ifndef M5OPS_TIMER
-                  polybench_stop_instruments;
-                  LOAD_CNN_FORWARD(ct,rt,st,n,k,p,q,cnn_forward_tile_c,cnn_forward_tile_r,cnn_forward_tile_s)
-                  polybench_print_instruments;
-                  polybench_start_instruments;
-          #else
-                  LKMC_M5OPS_DUMPSTATS;
-                  LOAD_CNN_FORWARD(ct,rt,st,n,k,p,q,cnn_forward_tile_c,cnn_forward_tile_r,cnn_forward_tile_s)
-                  LKMC_M5OPS_RESETSTATS;
-          #endif
+                LKMC_M5OPS_DUMPSTATS;
+                LOAD_CNN_FORWARD(ct,rt,st,n,k,p,q,cnn_forward_tile_c,cnn_forward_tile_r,cnn_forward_tile_s)
+                LKMC_M5OPS_RESETSTATS;
         #endif
                 for (int c = ct; c < MIN(_PB_NC, ct + cnn_forward_tile_c); c++)
                   for (int r = rt; r < MIN(_PB_NR, rt + cnn_forward_tile_r); r++)
                     for (int s = st; s < MIN(_PB_NS, st + cnn_forward_tile_s); s++) {
-                      out_F[n][k][p][q] += W[k][c][r][s] * inp_F[n][c][NU * p + NR - r - 1][NU * q + NS - s - 1];
-                      kernel_count++;
+                      mask[mask_cnt] += W[k][c][r][s] * inp_F[n][c][NU * p + NR - r - 1][NU * q + NS - s - 1];
+                      // kernel_count++;
                     }
+                mask_cnt = (mask_cnt + 1) % 2;
               }
-        #ifdef CNN_FORWARD_TIMER
-          #ifndef M5OPS_TIMER
-          polybench_stop_instruments;
-          polybench_print_instruments;
-          #else
-          LKMC_M5OPS_DUMPSTATS;
+          #ifdef CNN_FORWARD_TIMER
+              LKMC_M5OPS_DUMPSTATS;
+              LKMC_M5OPS_RESETSTATS;
           #endif
+          out_F[n][k][p][q] = mask[0] + mask[1];
+        }
+        #ifdef CNN_FORWARD_TIMER
+          LKMC_M5OPS_DUMPSTATS;
         #endif
 #pragma endscop
 }
@@ -183,11 +176,6 @@ static void cnn_backward(int nn, int nk, int np, int nq, int nc, int nr, int ns,
   // int _ns = 0, _ne = _PB_NN / 2, _cs = 0, _ce = _PB_NC / 1, _hs = 0,
   // _he = _PB_NH / 2, _ws = 0, _we = _PB_NW / 2;
   // LOAD_CNN_BACKWARD
-
-#ifdef CNN_BACKWARD_TIMER
-  polybench_start_instruments;
-#endif
-  printf("This is backward\n");
 
 #pragma scop
   // for (int n = _ns; n < _ne; n++)
@@ -229,12 +217,6 @@ static void cnn_backward(int nn, int nk, int np, int nq, int nc, int nr, int ns,
                   }
 
 #pragma endscop
-
-#ifdef CNN_BACKWARD_TIMER
-  polybench_stop_instruments;
-  polybench_print_instruments;
-#endif
-
 }
 #endif
 
@@ -275,11 +257,6 @@ int main(int argc, char **argv) {
              POLYBENCH_ARRAY(W), POLYBENCH_ARRAY(inp_F),
              POLYBENCH_ARRAY(err_in), POLYBENCH_ARRAY(err_out));
 
-
-#ifdef CNN_ALL_TIMER
-  polybench_start_instruments;
-#endif
-
 #if defined(CNN_ALL) || defined(CNN_FORWARD)
   /* Run kernel. */
   cnn_forward(nn, nk, np, nq, nc, nr, ns, nw, nh, nu, nv,
@@ -292,11 +269,6 @@ int main(int argc, char **argv) {
   cnn_backward(nn, nk, np, nq, nc, nr, ns, nw, nh, nu, nv,
                POLYBENCH_ARRAY(err_out), POLYBENCH_ARRAY(W),
                POLYBENCH_ARRAY(err_in));
-#endif
-
-#ifdef CNN_ALL_TIMER
-  polybench_stop_instruments;
-  polybench_print_instruments;
 #endif
 
   printf("kernel count: %d\n",kernel_count);
