@@ -44,6 +44,10 @@ static int loop_count = 0;
 #define cnn_backward_tile_p 6  /*max size is 40 in large*/
 #define cnn_backward_tile_q 6  /*max size is 40 in large*/
 
+#define cnn_forward_tile_n 10 /*max size is 50 in large, 10 in small, 5 in mini*/
+#define cnn_forward_tile_k 20 /*max size is 40 in large, 15 in small, 7 in mini*/
+#define cnn_forward_tile_p 3 /*max size is 9 in large, 6 in small, 4 in mini*/
+#define cnn_forward_tile_q 3 /*max size is 9 in large, 6 in small, 4 in mini*/
 #define cnn_forward_tile_c 25 /*max size is 75 in large, 20 in small, 10 in mini*/
 #define cnn_forward_tile_r 3 /*max size is 6 in large, 4 in small, 3 in mini*/
 #define cnn_forward_tile_s 3 /*max size is 6 in large, 4 in small, 3 in mini*/
@@ -119,44 +123,31 @@ void cnn_forward(int nn, int nk, int np, int nq, int nc, int nr, int ns, int nw,
 
 #pragma scop
 
-        #ifdef CNN_FORWARD_TIMER
-            LKMC_M5OPS_RESETSTATS;
-        #endif
-  for (int n = _ns; n < _ne; n++)
-    for (int k = _ks; k < _ke; k++)
-      for (int p = _ps; p < _pe; p++)
-        for (int q = _qs; q < _qe; q++){
-  // for (int n = 0; n < _PB_NN; n++)
-  //   for (int k = 0; k < _PB_NK; k++)
-  //     for (int p = 0; p < _PB_NP; p++)
-  //       for (int q = 0; q < _PB_NQ; q++){
-          // int n = 0, k = 0, p = 0, q = 0;
-          // int n = 9, k = 14, p = 5, q = 5;
-          // int n = 25, k = 20, p = 5, q = 5;
-          // int n = 20, k = 15, p = 3, q = 4;
-          DATA_TYPE mask[2];
-          int mask_cnt = 0;
+#ifdef CNN_FORWARD_TIMER
+    LKMC_M5OPS_RESETSTATS;
+#endif
+  for (int nt = 0; nt < _PB_NN; nt += cnn_forward_tile_n)
+    for (int kt = 0; kt < _PB_NK; kt += cnn_forward_tile_k)
+      for (int pt = 0; pt < _PB_NP; pt += cnn_forward_tile_p)
+        for (int qt = 0; qt < _PB_NQ; qt += cnn_forward_tile_q){
           for (int ct = 0; ct < _PB_NC; ct += cnn_forward_tile_c)
             for (int rt = 0; rt < _PB_NR; rt += cnn_forward_tile_r)
               for (int st = 0; st < _PB_NS; st += cnn_forward_tile_s){
-        #ifdef CNN_FORWARD_TIMER
-                LKMC_M5OPS_DUMPSTATS;
-                LOAD_CNN_FORWARD(ct,rt,st,n,k,p,q,cnn_forward_tile_c,cnn_forward_tile_r,cnn_forward_tile_s)
-                LKMC_M5OPS_RESETSTATS;
-        #endif
-                for (int c = ct; c < MIN(_PB_NC, ct + cnn_forward_tile_c); c++)
-                  for (int r = rt; r < MIN(_PB_NR, rt + cnn_forward_tile_r); r++)
-                    for (int s = st; s < MIN(_PB_NS, st + cnn_forward_tile_s); s++) {
-                      mask[mask_cnt] += W[k][c][r][s] * inp_F[n][c][NU * p + NR - r - 1][NU * q + NS - s - 1];
-                      // kernel_count++;
-                    }
-                mask_cnt = (mask_cnt + 1) % 2;
-              }
           #ifdef CNN_FORWARD_TIMER
-              LKMC_M5OPS_DUMPSTATS;
-              LKMC_M5OPS_RESETSTATS;
+                  LKMC_M5OPS_DUMPSTATS;
+                  // Load data here
+                  LKMC_M5OPS_RESETSTATS;
           #endif
-          out_F[n][k][p][q] = mask[0] + mask[1];
+                  for (int n = nt; n < MIN(_PB_NN, nt + cnn_forward_tile_n); n++)
+                    for (int k = kt; k < MIN(_PB_NK, kt + cnn_forward_tile_k); k++)
+                      for (int p = pt; p < MIN(_PB_NP, pt + cnn_forward_tile_p); p++)
+                        for (int q = qt; q < MIN(_PB_NQ, qt + cnn_forward_tile_q); q++)
+                          for (int c = ct; c < MIN(_PB_NC, ct + cnn_forward_tile_c); c++)
+                            for (int r = rt; r < MIN(_PB_NR, rt + cnn_forward_tile_r); r++)
+                              for (int s = st; s < MIN(_PB_NS, st + cnn_forward_tile_s); s++) {
+                      out_F[n][k][p][q] += W[k][c][r][s] * inp_F[n][c][NU * p + NR - r - 1][NU * q + NS - s - 1];
+                    }
+              }
         }
         #ifdef CNN_FORWARD_TIMER
           LKMC_M5OPS_DUMPSTATS;
