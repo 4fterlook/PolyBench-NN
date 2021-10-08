@@ -112,8 +112,8 @@ static void maxpool2d_forward(int nn, int nd, int ih, int iw, int ow, int oh, in
 				for (int c = 0; c < _PB_NC; c++)
 				{
 					int val = -10000000;
-					for (int h = sh * r; h < MIN(sh * r + dh, ih); h++)
-						for (int w = sw * c; w < MIN(sw * c + dw, iw); w++)
+					for (int h = SH * r; h < MIN(SH * r + DH, IH); h++)
+						for (int w = SW * c; w < MIN(SW * c + DW, IW); w++)
 							val = MAX(val, inp_F[n][d][h][w]);
 					out_F[n][d][r][c] = val;
 				}
@@ -137,8 +137,8 @@ static void maxpool2d_backward(int nn, int nd, int ih, int iw, int ow, int oh, i
 			{
 				for (int c = 0; c < _PB_NC; c++)
 				{
-					for (int h = r * sh; h < MIN(r * sh + dh, ih); h++)
-						for (int w = c * sw; w < MIN(c * sw + dw, iw); w++)
+					for (int h = r * SH; h < MIN(r * SH + DH, IH); h++)
+						for (int w = c * SW; w < MIN(c * SW + DW, IW); w++)
 							if (out_F[n][d][r][c] == inp_F[n][d][h][w])
 								err_in[n][d][h][w] += err_out[n][d][r][c];
 				}
