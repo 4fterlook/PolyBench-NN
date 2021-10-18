@@ -20,6 +20,19 @@
 /* Include benchmark-specific header. */
 #include "gemm.h"
 
+#include <prem.h>
+#include <m5ops.h>
+
+#define gemm_tile_i 100 /*max size is 1000 in large*/
+#define gemm_tile_k 20 /*max size is 1200 in large*/
+#define gemm_tile_j 100 /*max size is 1100 in large*/
+
+#define MAX(x, y) (((x) > (y)) ? (x) : (y))
+#define MIN(x, y) (((x) > (y)) ? (y) : (x))
+
+
+static int gemm_tile_count = 0;
+
 /* Array initialization. */
 static void init_array(int ni, int nj, int nk,
                        DATA_TYPE *alpha,
@@ -76,21 +89,26 @@ static void kernel_gemm(int ni, int nj, int nk,
 //BLAS PARAMS
 //TRANSA = 'N'
 //TRANSB = 'N'
-// => Form C := alpha*A*B + beta*C,
 //A is NIxNK
 //B is NKxNJ
 //C is NIxNJ
 #pragma scop
-  for (int i = 0; i < _PB_NI; i++)
-  {
-    for (int j = 0; j < _PB_NJ; j++)
-      C[i][j] *= beta;
-    for (int k = 0; k < _PB_NK; k++)
-    {
-      for (int j = 0; j < _PB_NJ; j++)
-        C[i][j] += alpha * A[i][k] * B[k][j];
-    }
-  }
+LKMC_M5OPS_RESETSTATS;
+  for (int it = 0; it < _PB_NI; it += gemm_tile_i)
+    for (int kt = 0; kt < _PB_NK; kt += gemm_tile_k)
+      for (int jt = 0; jt < _PB_NJ; jt += gemm_tile_j){
+        LKMC_M5OPS_DUMPSTATS;
+        if(gemm_tile_count++ > 4){
+          LKMC_M5OPS_EXIT;
+        }
+        LKMC_M5OPS_RESETSTATS;
+        for (int i = it; i < MIN(_PB_NI, it + gemm_tile_i); i++)
+          for (int k = kt; k < MIN(_PB_NK, kt + gemm_tile_k); k++)
+            for (int j = jt; j < MIN(_PB_NJ, jt + gemm_tile_j); j++){
+              C[i][j] += alpha * A[i][k] * B[k][j];
+            }
+      }
+LKMC_M5OPS_DUMPSTATS;
 #pragma endscop
 }
 
