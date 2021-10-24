@@ -125,38 +125,27 @@ void cnn_forward(int nn, int nk, int np, int nq, int nc, int nr, int ns, int nw,
 #ifdef CNN_FORWARD_TIMER
     LKMC_M5OPS_RESETSTATS;
 #endif
-  for (int nt = 0; nt < _PB_NN; nt += cnn_forward_tile_n)
-    for (int kt = 0; kt < _PB_NK; kt += cnn_forward_tile_k)
-      for (int pt = 0; pt < _PB_NP; pt += cnn_forward_tile_p)
-        for (int qt = 0; qt < _PB_NQ; qt += cnn_forward_tile_q){
-          for (int ct = 0; ct < _PB_NC; ct += cnn_forward_tile_c)
-            for (int rt = 0; rt < _PB_NR; rt += cnn_forward_tile_r)
-              for (int st = 0; st < _PB_NS; st += cnn_forward_tile_s){
+                for (int n = 0; n < _PB_NN; n++)
+                  for (int k = 0; k < _PB_NK; k++){
           #ifdef CNN_FORWARD_TIMER
                   LKMC_M5OPS_DUMPSTATS;
                   // Load data here
-                  if(cnn_forward_tile_count++ > 4){
-                    LKMC_M5OPS_EXIT;
-                  }
+                      if(cnn_forward_tile_count++ > 4){
+                        LKMC_M5OPS_EXIT;
+                      }
                   LKMC_M5OPS_RESETSTATS;
           #endif
-                  for (int n = nt; n < MIN(_PB_NN, nt + cnn_forward_tile_n); n++)
-                    for (int k = kt; k < MIN(_PB_NK, kt + cnn_forward_tile_k); k++)
-                      for (int p = pt; p < MIN(_PB_NP, pt + cnn_forward_tile_p); p++)
-                        for (int q = qt; q < MIN(_PB_NQ, qt + cnn_forward_tile_q); q++)
-                          // for (int c = 0; c < _PB_NC; c++)
-                          //   for (int r = 0; r < _PB_NR; r++)
-                          //     for (int s = 0; s < _PB_NS; s++){
-                          for (int c = ct; c < MIN(_PB_NC, ct + cnn_forward_tile_c); c++)
-                            for (int r = rt; r < MIN(_PB_NR, rt + cnn_forward_tile_r); r++)
-                              for (int s = st; s < MIN(_PB_NS, st + cnn_forward_tile_s); s++) {
+                      for (int p = 0; p < _PB_NP; p++)
+                        for (int q = 0; q < _PB_NQ; q++)
+                          for (int c = 0; c < _PB_NC; c++)
+                            for (int r = 0; r < _PB_NR; r++)
+                              for (int s = 0; s < _PB_NS; s++){
                       out_F[n][k][p][q] += W[k][c][r][s] * inp_F[n][c][NU * p + NR - r - 1][NU * q + NS - s - 1];
                     }
           // #ifdef CNN_FORWARD_TIMER
           //         LKMC_M5OPS_RESETSTATS;
           // #endif
               }
-        }
         #ifdef CNN_FORWARD_TIMER
           LKMC_M5OPS_DUMPSTATS;
         #endif
