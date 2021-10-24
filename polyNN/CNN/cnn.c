@@ -49,12 +49,12 @@ static int cnn_backward_tile_count = 0;
 #define cnn_backward_tile_q 6  /*max size is 9 in large*/
 
 #define cnn_forward_tile_n 25 /*max size is 50 in large, 10 in small, 5 in mini*/
-#define cnn_forward_tile_k 20 /*max size is 40 in large, 15 in small, 7 in mini*/
-#define cnn_forward_tile_p 3 /*max size is 9 in large, 6 in small, 4 in mini*/
-#define cnn_forward_tile_q 3 /*max size is 9 in large, 6 in small, 4 in mini*/
-#define cnn_forward_tile_c 25 /*max size is 75 in large, 20 in small, 10 in mini*/
-#define cnn_forward_tile_r 2 /*max size is 6 in large, 4 in small, 3 in mini*/
-#define cnn_forward_tile_s 3 /*max size is 6 in large, 4 in small, 3 in mini*/
+#define cnn_forward_tile_k 10 /*max size is 40 in large, 15 in small, 7 in mini*/
+#define cnn_forward_tile_p 9 /*max size is 9 in large, 6 in small, 4 in mini*/
+#define cnn_forward_tile_q 9 /*max size is 9 in large, 6 in small, 4 in mini*/
+#define cnn_forward_tile_c 15 /*max size is 75 in large, 20 in small, 10 in mini*/
+#define cnn_forward_tile_r 6 /*max size is 6 in large, 4 in small, 3 in mini*/
+#define cnn_forward_tile_s 6 /*max size is 6 in large, 4 in small, 3 in mini*/
 
 
 /* Array initialization. */
@@ -152,6 +152,9 @@ void cnn_forward(int nn, int nk, int np, int nq, int nc, int nr, int ns, int nw,
                               for (int s = st; s < MIN(_PB_NS, st + cnn_forward_tile_s); s++) {
                       out_F[n][k][p][q] += W[k][c][r][s] * inp_F[n][c][NU * p + NR - r - 1][NU * q + NS - s - 1];
                     }
+          // #ifdef CNN_FORWARD_TIMER
+          //         LKMC_M5OPS_RESETSTATS;
+          // #endif
               }
         }
         #ifdef CNN_FORWARD_TIMER
