@@ -16,6 +16,7 @@
  *
  */
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
+#define MIN(x, y) (((x) > (y)) ? (y) : (x))
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
@@ -30,7 +31,18 @@
 /* Default data type is double, default size is N=1024. */
 #include "rnn.h"
 
-#define M5OPS_TIMER
+#define RNN_FORWARD
+#define RNN_FORWARD_TIMER_1
+
+static int rnn_forward_tile_count = 0;
+
+#define rnn_forward_1_tile_s1 100 /*max size is 700 in large*/
+#define rnn_forward_1_tile_p 100 /*max size is 500 in large*/
+#define rnn_forward_2_tile_s1 700 /*max size is 700 in large*/
+#define rnn_forward_2_tile_s2 700 /*max size is 700 in large*/
+#define rnn_forward_3_tile_q 650 /*max size is 650 in large*/
+#define rnn_forward_3_tile_s1 700 /*max size is 700 in large*/
+
 
 /* Array initialization. */
 static void init_array(int nt, int np, int ns, int nq,
@@ -178,18 +190,68 @@ static void rnn_forward(int nt, int np, int ns, int nq,
 
 	for (int t = 0; t < _PB_NT; t++)
 	{
-		for (int s1 = 0; s1 < _PB_NS; s1++)
-		{
-			for (int p = 0; p < _PB_NP; p++)
-				s_F[t][s1] += U[s1][p] * inp_F[t][p];
-
-			if (t > 0)
-				for (int s2 = 0; s2 < _PB_NS; s2++)
-					s_F[t][s1] += W[s1][s2] * s_F[t - 1][s2];
+		#ifdef RNN_FORWARD_TIMER_1
+			LKMC_M5OPS_RESETSTATS;
+		#endif
+		for (int s1t = 0; s1t < _PB_NS; s1t += rnn_forward_1_tile_s1)
+			for (int pt = 0; pt < _PB_NP; pt += rnn_forward_1_tile_p){
+				#ifdef RNN_FORWARD_TIMER_1
+					LKMC_M5OPS_DUMPSTATS;
+					if (rnn_forward_tile_count++ > 4){
+						LKMC_M5OPS_EXIT;
+					}
+					LKMC_M5OPS_RESETSTATS;
+				#endif
+				for (int s1 = s1t; s1 < MIN(_PB_NS, s1t+rnn_forward_1_tile_s1); s1++)
+					for (int p = pt; p < MIN(_PB_NP, pt+rnn_forward_1_tile_p); p++){
+						s_F[t][s1] += U[s1][p] * inp_F[t][p];
+					}
 		}
-		for (int q = 0; q < _PB_NQ; q++)
-			for (int s1 = 0; s1 < _PB_NS; s1++)
-				out_F[t][q] += V[q][s1] * s_F[t][s1];
+		#ifdef RNN_FORWARD_TIMER_1
+			LKMC_M5OPS_DUMPSTATS;
+		#endif
+		#ifdef RNN_FORWARD_TIMER_2
+			LKMC_M5OPS_RESETSTATS;
+		#endif
+		if (t > 0){
+			for (int s1t = 0; s1t < _PB_NS; s1t += rnn_forward_2_tile_s1)
+				for (int s2t = 0; s2t < _PB_NS; s2t += rnn_forward_2_tile_s2){
+				#ifdef RNN_FORWARD_TIMER_2
+					LKMC_M5OPS_DUMPSTATS;
+					if (rnn_forward_tile_count++ > 4){
+						LKMC_M5OPS_EXIT;
+					}
+					LKMC_M5OPS_RESETSTATS;
+				#endif
+					for (int s1 = s1t; s1 < MIN(_PB_NS, s1t+rnn_forward_2_tile_s1); s1++)
+						for (int s2 = s2t; s2 < MIN(_PB_NS, s2t+rnn_forward_2_tile_s2); s2++){
+							s_F[t][s1] += W[s1][s2] * s_F[t - 1][s2];
+						}
+			}
+		}
+		#ifdef RNN_FORWARD_TIMER_2
+			LKMC_M5OPS_DUMPSTATS;
+		#endif
+		#ifdef RNN_FORWARD_TIMER_3
+			LKMC_M5OPS_RESETSTATS;
+		#endif
+		for (int qt = 0; qt < _PB_NQ; qt += rnn_forward_3_tile_q)
+			for (int s1t = 0; s1t < _PB_NS; s1t += rnn_forward_3_tile_s1){
+				#ifdef RNN_FORWARD_TIMER_3
+					LKMC_M5OPS_DUMPSTATS;
+					if (rnn_forward_tile_count++ > 4){
+						LKMC_M5OPS_EXIT;
+					}
+					LKMC_M5OPS_RESETSTATS;
+				#endif
+				for (int q = qt; q < MIN(_PB_NQ, qt+rnn_forward_3_tile_q); q++)
+					for (int s1 = s1t; s1 < MIN(_PB_NS, s1t+rnn_forward_3_tile_s1); s1++){
+						out_F[t][q] += V[q][s1] * s_F[t][s1];
+					}
+		}
+		#ifdef RNN_FORWARD_TIMER_3
+			LKMC_M5OPS_DUMPSTATS;
+		#endif
 	}
 #pragma endscop
 }
@@ -290,13 +352,7 @@ int main(int argc, char **argv)
 						 POLYBENCH_ARRAY(delTA),
 						 POLYBENCH_ARRAY(delTB));
 
-	/* Start timer. */
-#ifndef M5OPS_TIMER
-	polybench_start_instruments;
-#else
-  LKMC_M5OPS_RESETSTATS;
-#endif
-
+#if defined(RNN_FORWARD)
 	/* Run kernel. */
 	rnn_forward(nt, np, ns, nq,
 							POLYBENCH_ARRAY(out_F),
@@ -305,7 +361,8 @@ int main(int argc, char **argv)
 							POLYBENCH_ARRAY(U),
 							POLYBENCH_ARRAY(W),
 							POLYBENCH_ARRAY(V));
-
+#endif
+#if defined(RNN_BACKWARD)
 	rnn_backward(nt, np, ns, nq, bptt_trunc,
 							 POLYBENCH_ARRAY(inp_F),
 							 POLYBENCH_ARRAY(s_F),
@@ -317,16 +374,7 @@ int main(int argc, char **argv)
 							 POLYBENCH_ARRAY(delV),
 							 POLYBENCH_ARRAY(delTA),
 							 POLYBENCH_ARRAY(delTB));
-
-
-	/* Stop and print timer. */
-#ifndef M5OPS_TIMER
-	polybench_stop_instruments;
-	polybench_print_instruments;
-#else
-  LKMC_M5OPS_DUMPSTATS;
 #endif
-
 	/* Prevent dead-code elimination. All live-out data must be printed
 	   by the function call in argument. */
 	polybench_prevent_dce(print_array_fwd(nt, nq, POLYBENCH_ARRAY(out_F)));
