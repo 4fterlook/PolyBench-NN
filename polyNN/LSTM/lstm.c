@@ -154,45 +154,24 @@ static void lstm_forward(int nt, int np, int ns, int nq,
 	{
 		for (int s1 = 0; s1 < _PB_S; s1++)
 		{
-			i[s1] = 0.0;
-			for (int p = 0; p < _PB_P; p++)
+			i[s1] = (DATA_TYPE) 0.0;
+			f[s1] = (DATA_TYPE) 0.0;
+			o[s1] = (DATA_TYPE) 0.0;
+			g[s1] = (DATA_TYPE) 0.0;
+			for (int p = 0; p < _PB_P; p++){
 				i[s1] += U_i[s1][p] * inp_F[t][p];
-
-			if (t > 0)
-				for (int s2 = 0; s2 < _PB_S; s2++)
-					i[s1] += W_i[s1][s2] * s_F[t - 1][s2];
-		}
-
-		for (int s1 = 0; s1 < _PB_S; s1++)
-		{
-			f[s1] = 0.0;
-			for (int p = 0; p < _PB_P; p++)
 				f[s1] += U_f[s1][p] * inp_F[t][p];
-
-			if (t > 0)
-				for (int s2 = 0; s2 < _PB_S; s2++)
-					f[s1] += W_f[s1][s2] * s_F[t - 1][s2];
-		}
-
-		for (int s1 = 0; s1 < _PB_S; s1++)
-		{
-			o[s1] = 0.0;
-			for (int p = 0; p < _PB_P; p++)
 				o[s1] += U_o[s1][p] * inp_F[t][p];
-
-			if (t > 0)
-				for (int s2 = 0; s2 < _PB_S; s2++)
-					o[s1] += W_o[s1][s2] * s_F[t - 1][s2];
-		}
-		for (int s1 = 0; s1 < _PB_S; s1++)
-		{
-			g[s1] = 0.0;
-			for (int p = 0; p < _PB_P; p++)
 				g[s1] += U_g[s1][p] * inp_F[t][p];
+			}
 
 			if (t > 0)
-				for (int s2 = 0; s2 < _PB_S; s2++)
+				for (int s2 = 0; s2 < _PB_S; s2++){
+					i[s1] += W_i[s1][s2] * s_F[t - 1][s2];
+					f[s1] += W_f[s1][s2] * s_F[t - 1][s2];
+					o[s1] += W_o[s1][s2] * s_F[t - 1][s2];
 					g[s1] += W_g[s1][s2] * s_F[t - 1][s2];
+				}
 		}
 
 		if (t > 0)
@@ -201,6 +180,7 @@ static void lstm_forward(int nt, int np, int ns, int nq,
 
 		for (int b = 0; b < NS; b++)
 			s_F[t][b] = c_F[t][b] * o[b];
+
 	}
 #pragma endscop
 }
@@ -480,7 +460,7 @@ int main(int argc, char **argv)
 #endif
 	/* Prevent dead-code elimination. All live-out data must be printed
 	   by the function call in argument. */
-	polybench_prevent_dce(print_array(ns, POLYBENCH_ARRAY(o)));
+	// polybench_prevent_dce(print_array(ns, POLYBENCH_ARRAY(o)));
 
 	/* Be clean. */
 	POLYBENCH_FREE_ARRAY(s_F);
