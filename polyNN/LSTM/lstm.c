@@ -28,8 +28,9 @@
 /* Include benchmark-specific header. */
 /* Default data type is double, default size is N=1024. */
 #include "lstm.h"
-
-#define M5OPS_TIMER
+#define LSTM_FORWARD
+#define LSTM_BACKWARD
+#define LSTM_FORWARD_TIMER
 
 /* Array initialization. */
 static void init_array(int nt, int np, int ns, int nq,
@@ -426,14 +427,7 @@ int main(int argc, char **argv)
 						 POLYBENCH_ARRAY(del_f),
 						 POLYBENCH_ARRAY(del_o),
 						 POLYBENCH_ARRAY(del_g));
-
-	/* Start timer. */
-#ifndef M5OPS_TIMER
-	polybench_start_instruments;
-#else
-  LKMC_M5OPS_RESETSTATS;
-#endif
-
+#if defined(LSTM_FORWARD)
 	/* Run kernel. */
 	lstm_forward(nt, np, ns, nq,
 							 POLYBENCH_ARRAY(s_F),
@@ -451,7 +445,8 @@ int main(int argc, char **argv)
 							 POLYBENCH_ARRAY(f),
 							 POLYBENCH_ARRAY(o),
 							 POLYBENCH_ARRAY(g));
-
+#endif
+#if defined(LSTM_BACKWARD)
 	lstm_backward(nt, np, ns, nq,
 								POLYBENCH_ARRAY(s_F),
 								POLYBENCH_ARRAY(inp_F),
@@ -482,15 +477,7 @@ int main(int argc, char **argv)
 								POLYBENCH_ARRAY(del_f),
 								POLYBENCH_ARRAY(del_o),
 								POLYBENCH_ARRAY(del_g));
-
-	/* Stop and print timer. */
-#ifndef M5OPS_TIMER
-	polybench_stop_instruments;
-	polybench_print_instruments;
-#else
-  LKMC_M5OPS_DUMPSTATS;
 #endif
-
 	/* Prevent dead-code elimination. All live-out data must be printed
 	   by the function call in argument. */
 	polybench_prevent_dce(print_array(ns, POLYBENCH_ARRAY(o)));
