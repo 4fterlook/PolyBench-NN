@@ -35,9 +35,10 @@
 #define RNN_FORWARD_TIMER_1
 
 static int rnn_forward_tile_count = 0;
+static int cnt = 0;
 
-#define rnn_forward_1_tile_s1 100 /*max size is 700 in large*/
-#define rnn_forward_1_tile_p 100 /*max size is 500 in large*/
+#define rnn_forward_1_tile_s1 88 /*max size is 700 in large*/
+#define rnn_forward_1_tile_p 72 /*max size is 500 in large*/
 #define rnn_forward_2_tile_s1 700 /*max size is 700 in large*/
 #define rnn_forward_2_tile_s2 700 /*max size is 700 in large*/
 #define rnn_forward_3_tile_q 650 /*max size is 650 in large*/
@@ -198,6 +199,7 @@ static void rnn_forward(int nt, int np, int ns, int nq,
 				#ifdef RNN_FORWARD_TIMER_1
 					LKMC_M5OPS_DUMPSTATS;
 					if (rnn_forward_tile_count++ > 4){
+						// printf("Tile number: %d\n", cnt);
 						LKMC_M5OPS_EXIT;
 					}
 					LKMC_M5OPS_RESETSTATS;
@@ -205,6 +207,7 @@ static void rnn_forward(int nt, int np, int ns, int nq,
 				for (int s1 = s1t; s1 < MIN(_PB_NS, s1t+rnn_forward_1_tile_s1); s1++)
 					for (int p = pt; p < MIN(_PB_NP, pt+rnn_forward_1_tile_p); p++){
 						s_F[t][s1] += U[s1][p] * inp_F[t][p];
+						// cnt++;
 					}
 		}
 		#ifdef RNN_FORWARD_TIMER_1
