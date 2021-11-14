@@ -18,7 +18,6 @@
 #include <string.h>
 #include <math.h>
 
-#define LKMC_M5OPS_ENABLE 0
 #include <m5ops.h>
 
 /* Include polybench common header. */
@@ -427,10 +426,6 @@ int main(int argc, char **argv)
 	/* Start timer. */
 	polybench_start_instruments;
 
-#if(LKMC_M5OPS_ENABLE)
-  LKMC_M5OPS_RESETSTATS;
-#endif
-
 	/* Run kernel. */
 	lstm_forward(nt, np, ns, nq,
 							 POLYBENCH_ARRAY(s_F),
@@ -479,10 +474,6 @@ int main(int argc, char **argv)
 								POLYBENCH_ARRAY(del_f),
 								POLYBENCH_ARRAY(del_o),
 								POLYBENCH_ARRAY(del_g));
-
-#if(LKMC_M5OPS_ENABLE)
-  LKMC_M5OPS_DUMPSTATS;
-#endif
 
 	/* Stop and print timer. */
 	polybench_stop_instruments;
