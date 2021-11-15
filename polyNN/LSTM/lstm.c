@@ -30,7 +30,19 @@
 #include "lstm.h"
 #define LSTM_FORWARD
 #define LSTM_BACKWARD
-#define LSTM_FORWARD_TIMER
+#define LSTM_FORWARD_TIMER_1
+
+static int lstm_forward_tile_count = 0;
+
+#define lstm_forward_1_tile_s1 65 /*max size is 650 in large*/
+#define lstm_forward_1_tile_p 70 /*max size is 700 in large*/
+
+#define lstm_forward_2_tile_s1 20 /*max size is 650 in large*/
+#define lstm_forward_2_tile_s2 20 /*max size is 700 in large*/
+
+#define lstm_forward_3_tile_b 20 /*max size is 650 in large*/
+
+#define lstm_forward_4_tile_b 40 /*max size is 650 in large*/
 
 /* Array initialization. */
 static void init_array(int nt, int np, int ns, int nq,
@@ -152,34 +164,91 @@ static void lstm_forward(int nt, int np, int ns, int nq,
 
 	for (int t = 0; t < _PB_T; t++)
 	{
-		for (int s1 = 0; s1 < _PB_S; s1++)
-		{
-			i[s1] = (DATA_TYPE) 0.0;
-			f[s1] = (DATA_TYPE) 0.0;
-			o[s1] = (DATA_TYPE) 0.0;
-			g[s1] = (DATA_TYPE) 0.0;
-			for (int p = 0; p < _PB_P; p++){
-				i[s1] += U_i[s1][p] * inp_F[t][p];
-				f[s1] += U_f[s1][p] * inp_F[t][p];
-				o[s1] += U_o[s1][p] * inp_F[t][p];
-				g[s1] += U_g[s1][p] * inp_F[t][p];
+		#ifdef LSTM_FORWARD_TIMER_1
+			LKMC_M5OPS_RESETSTATS;
+		#endif
+		for (int s1t = 0; s1t < _PB_S; s1t += lstm_forward_1_tile_s1)
+			for (int pt = 0; pt < _PB_P; pt += lstm_forward_1_tile_p){
+				#ifdef LSTM_FORWARD_TIMER_1
+					LKMC_M5OPS_DUMPSTATS;
+							if (lstm_forward_tile_count++ > 4){
+								LKMC_M5OPS_EXIT;
+							}
+					LKMC_M5OPS_RESETSTATS;
+				#endif
+				for (int s1 = s1t; s1 < MIN(_PB_S, s1t+lstm_forward_1_tile_s1); s1++)
+				{
+					for (int p = pt; p < MIN(_PB_P, pt+lstm_forward_1_tile_p); p++){
+						if (p==0){
+							i[s1] = (DATA_TYPE) 0.0;
+							f[s1] = (DATA_TYPE) 0.0;
+							o[s1] = (DATA_TYPE) 0.0;
+							g[s1] = (DATA_TYPE) 0.0;
+						}
+						i[s1] += U_i[s1][p] * inp_F[t][p];
+						f[s1] += U_f[s1][p] * inp_F[t][p];
+						o[s1] += U_o[s1][p] * inp_F[t][p];
+						g[s1] += U_g[s1][p] * inp_F[t][p];
+					}
+				}
 			}
 
-			if (t > 0)
-				for (int s2 = 0; s2 < _PB_S; s2++){
-					i[s1] += W_i[s1][s2] * s_F[t - 1][s2];
-					f[s1] += W_f[s1][s2] * s_F[t - 1][s2];
-					o[s1] += W_o[s1][s2] * s_F[t - 1][s2];
-					g[s1] += W_g[s1][s2] * s_F[t - 1][s2];
+
+			if (t > 0){
+				#ifdef LSTM_FORWARD_TIMER_2
+					LKMC_M5OPS_RESETSTATS;
+				#endif
+				for (int s1t = 0; s1t < _PB_S; s1t += lstm_forward_2_tile_s1)
+					for (int s2t = 0; s2t < _PB_S; s2t += lstm_forward_2_tile_s2){
+						#ifdef LSTM_FORWARD_TIMER_2
+							LKMC_M5OPS_DUMPSTATS;
+							if (lstm_forward_tile_count++ > 4){
+								LKMC_M5OPS_EXIT;
+							}
+							LKMC_M5OPS_RESETSTATS;
+						#endif
+						for (int s1 = s1t; s1 < MIN(_PB_S, s1t+lstm_forward_2_tile_s1); s1++){
+							for (int s2 = s2t; s2 < MIN(_PB_S, s2t+lstm_forward_2_tile_s2); s2++){
+								i[s1] += W_i[s1][s2] * s_F[t - 1][s2];
+								f[s1] += W_f[s1][s2] * s_F[t - 1][s2];
+								o[s1] += W_o[s1][s2] * s_F[t - 1][s2];
+								g[s1] += W_g[s1][s2] * s_F[t - 1][s2];
+							}
+						}
+					}
+			}
+		
+		if (t > 0){
+			#ifdef LSTM_FORWARD_TIMER_3
+				LKMC_M5OPS_RESETSTATS;
+			#endif
+			for (int bt = 0; bt < NS; bt += lstm_forward_3_tile_b){
+			#ifdef LSTM_FORWARD_TIMER_3
+				LKMC_M5OPS_DUMPSTATS;
+				if (lstm_forward_tile_count++ > 4){
+					LKMC_M5OPS_EXIT;
 				}
+				LKMC_M5OPS_RESETSTATS;
+			#endif
+				for (int b = bt; b < MIN(NS, bt+lstm_forward_3_tile_b); b++)
+					c_F[t][b] = c_F[t - 1][b] * f[b] + g[b] * i[b];
+			}
 		}
 
-		if (t > 0)
+		#ifdef LSTM_FORWARD_TIMER_4
+			LKMC_M5OPS_RESETSTATS;
+		#endif
+		for (int bt = 0; bt < NS; bt += lstm_forward_4_tile_b){
+			#ifdef LSTM_FORWARD_TIMER_4
+				LKMC_M5OPS_DUMPSTATS;
+				if (lstm_forward_tile_count++ > 4){
+					LKMC_M5OPS_EXIT;
+				}
+				LKMC_M5OPS_RESETSTATS;
+			#endif
 			for (int b = 0; b < NS; b++)
-				c_F[t][b] = c_F[t - 1][b] * f[b] + g[b] * i[b];
-
-		for (int b = 0; b < NS; b++)
-			s_F[t][b] = c_F[t][b] * o[b];
+				s_F[t][b] = c_F[t][b] * o[b];
+		}
 
 	}
 #pragma endscop

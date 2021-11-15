@@ -32,8 +32,6 @@
 
 #include <limits.h>
 
-#define M5OPS_TIMER
-
 #define MAXPOOL2D_FORWARD
 #define MAXPOOL2D_FORWARD_TIMER
 
