@@ -38,10 +38,10 @@
 
 static int sumpool2d_forward_tile_count = 0;
 
-#define sumpool2d_forward_tile_n 22 /*max size is 150 in large*/
-#define sumpool2d_forward_tile_d 14 /*max size is 120 in large*/
-#define sumpool2d_forward_tile_r 3 /*max size is 9 in large*/
-#define sumpool2d_forward_tile_c 3 /*max size is 9 in large*/
+#define sumpool2d_forward_tile_n 30 /*max size is 150 in large*/
+#define sumpool2d_forward_tile_d 20 /*max size is 120 in large*/
+#define sumpool2d_forward_tile_r 9 /*max size is 9 in large*/
+#define sumpool2d_forward_tile_c 9 /*max size is 9 in large*/
 
 /* Array initialization. */
 static void init_array(int nn, int nd, int ih, int iw, int oh, int ow,
@@ -125,7 +125,8 @@ for (int nt = 0; nt < _PB_NN; nt+=sumpool2d_forward_tile_n)
 			for (int ct = 0; ct < _PB_NC; ct+=sumpool2d_forward_tile_c){
 				#ifdef SUMPOOL2D_FORWARD_TIMER
 					LKMC_M5OPS_DUMPSTATS;
-					if (sumpool2d_forward_tile_count++ > 4){
+					sumpool2d_forward_tile_count += 1;
+					if (sumpool2d_forward_tile_count > 4){
 						printf("Tile number: %d\n", sumpool2d_forward_tile_count);
 						LKMC_M5OPS_EXIT;
 					}
