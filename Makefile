@@ -3,7 +3,7 @@
 CC := clang
 TARGET_CPU ?= x86
 
-OUT_DIR := cache_based/
+OUT_DIR := ideal_case/
 # SRC_FILES := $(wildcard */*/*.c)
 # SRC_FILES += $(wildcard */*/*/*.c)
 # SRC_FILES := $(filter-out medley/nussinov/Nussinov.orig.c, $(SRC_FILES))
@@ -18,14 +18,18 @@ CROSS_LD_FLAGS := -B /usr/lib/gcc-cross/aarch64-linux-gnu/9 -L /usr/lib/gcc-cros
 ARM_CROSS_FLAGS := -target aarch64-linux-gnu $(CROSS_INCLUDE_FLAGS) $(CROSS_LD_FLAGS)
 
 BENCH_SIZE ?= -DLARGE_DATASET
-POLLY_FLAGS = -DPOLYBENCH_USE_SCALAR_LB -DPOLYBENCH_TIME -DPOLYBENCH_DUMP_ARRAYS
-POLLY_FLAGS += -O3 
-POLLY_FLAGS += -mllvm -polly 
-POLLY_FLAGS += -mllvm -polly-parallel 
+POLLY_FLAGS = -DPOLYBENCH_USE_SCALAR_LB 
+# POLLY_FLAGS += -DPOLYBENCH_TIME 
+# POLLY_FLAGS += -DPOLYBENCH_CYCLE_ACCURATE_TIMER
+POLLY_FLAGS += -DPOLYBENCH_NO_FLUSH_CACHE
+# POLLY_FLAGS += -DPOLYBENCH_DUMP_ARRAYS
+POLLY_FLAGS += -O3
+POLLY_FLAGS += -fno-slp-vectorize -fno-vectorize 
+POLLY_FLAGS += -fno-unroll-loops
 # POLLY_FLAGS += -mllvm -polly-omp-backend=GNU 
 # POLLY_FLAGS += -mllvm -polly-num-threads=4 
 # POLLY_FLAGS += -mllvm -polly-scheduling=runtime 
-LD_FLAGS := -lgomp -lm
+LD_FLAGS := -static -lm
 
 all :$(OUTS)
 	@echo "Building done."
@@ -34,14 +38,15 @@ $(OUTS) :$(OUT_DIR)%.out : %.c utilities/polybench.c
 	@mkdir -p $(dir $@)
 ifeq ($(TARGET_CPU), aarch64)
 	@echo "building $< in arm"
-	$(CC) $(ARM_CROSS_FLAGS) -I utilities/ -I $(dir $<) $(BENCH_SIZE) $(POLLY_FLAGS) $< utilities/polybench.c -o $@ $(LD_FLAGS)
+	@$(CC) $(ARM_CROSS_FLAGS) -I utilities/ -I $(dir $<) $(BENCH_SIZE) $(POLLY_FLAGS) $< utilities/polybench.c -o $@ $(LD_FLAGS)
 else ifeq ($(TARGET_CPU), x86)
 	@echo "building $< in x86"
-	$(CC) -I utilities/ -I $(dir $<) $(BENCH_SIZE) $(POLLY_FLAGS) $< utilities/polybench.c -o $@ $(LD_FLAGS)
+	@$(CC) -I utilities/ -I $(dir $<) $(BENCH_SIZE) $(POLLY_FLAGS) $< utilities/polybench.c -o $@ $(LD_FLAGS)
 else
 	@(echo "Unknown cpu target, not supported yet."; exit 1)
 endif
 
 
 clean :
-	rm -rf $(OUT_DIR)
+	-rm -rf $(OUT_DIR)
+	-rm *.bc *.i *.o
