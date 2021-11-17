@@ -32,16 +32,21 @@
 #include "rnn.h"
 
 #define RNN_FORWARD
-// #define RNN_FORWARD_TIMER_1
+#define RNN_FORWARD_TIMER_2
 
 static int rnn_forward_tile_count = 0;
 
-#define rnn_forward_1_tile_s1 88 /*max size is 700 in large*/
-#define rnn_forward_1_tile_p 72 /*max size is 500 in large*/
-#define rnn_forward_2_tile_s1 700 /*max size is 700 in large*/
-#define rnn_forward_2_tile_s2 700 /*max size is 700 in large*/
-#define rnn_forward_3_tile_q 650 /*max size is 650 in large*/
-#define rnn_forward_3_tile_s1 700 /*max size is 700 in large*/
+#define rnn_forward_1_tile_t 167 /*max size is 500 in large*/
+#define rnn_forward_1_tile_s1 117 /*max size is 700 in large*/
+#define rnn_forward_1_tile_p 125 /*max size is 500 in large*/
+
+#define rnn_forward_2_tile_t 167 /*max size is 500 in large*/
+#define rnn_forward_2_tile_s1 88 /*max size is 700 in large*/
+#define rnn_forward_2_tile_s2 78 /*max size is 700 in large*/
+
+#define rnn_forward_3_tile_t 167 /*max size is 500 in large*/
+#define rnn_forward_3_tile_q 217 /*max size is 650 in large*/
+#define rnn_forward_3_tile_s1 234 /*max size is 700 in large*/
 
 
 /* Array initialization. */
@@ -188,11 +193,12 @@ static void rnn_forward(int nt, int np, int ns, int nq,
 {
 #pragma scop
 
-	for (int t = 0; t < _PB_NT; t++)
+
+	#ifdef RNN_FORWARD_TIMER_1
+		LKMC_M5OPS_RESETSTATS;
+	#endif
+	for (int tt = 0; tt < _PB_NT; tt += rnn_forward_1_tile_t)
 	{
-		#ifdef RNN_FORWARD_TIMER_1
-			LKMC_M5OPS_RESETSTATS;
-		#endif
 		for (int s1t = 0; s1t < _PB_NS; s1t += rnn_forward_1_tile_s1)
 			for (int pt = 0; pt < _PB_NP; pt += rnn_forward_1_tile_p){
 				#ifdef RNN_FORWARD_TIMER_1
@@ -203,40 +209,43 @@ static void rnn_forward(int nt, int np, int ns, int nq,
 					}
 					LKMC_M5OPS_RESETSTATS;
 				#endif
-				for (int s1 = s1t; s1 < MIN(_PB_NS, s1t+rnn_forward_1_tile_s1); s1++)
-					for (int p = pt; p < MIN(_PB_NP, pt+rnn_forward_1_tile_p); p++){
-						s_F[t][s1] += U[s1][p] * inp_F[t][p];
-						// cnt++;
-					}
+				for (int t = tt; t < MIN(_PB_NT, tt+rnn_forward_1_tile_t); t++)
+					for (int s1 = s1t; s1 < MIN(_PB_NS, s1t+rnn_forward_1_tile_s1); s1++)
+						for (int p = pt; p < MIN(_PB_NP, pt+rnn_forward_1_tile_p); p++){
+							s_F[t][s1] += U[s1][p] * inp_F[t][p];
+							// cnt++;
+						}
 		}
-		#ifdef RNN_FORWARD_TIMER_1
-			LKMC_M5OPS_DUMPSTATS;
-		#endif
-		#ifdef RNN_FORWARD_TIMER_2
-			LKMC_M5OPS_RESETSTATS;
-		#endif
-		if (t > 0){
-			for (int s1t = 0; s1t < _PB_NS; s1t += rnn_forward_2_tile_s1)
-				for (int s2t = 0; s2t < _PB_NS; s2t += rnn_forward_2_tile_s2){
-				#ifdef RNN_FORWARD_TIMER_2
-					LKMC_M5OPS_DUMPSTATS;
-					if (rnn_forward_tile_count++ > 4){
-						LKMC_M5OPS_EXIT;
-					}
-					LKMC_M5OPS_RESETSTATS;
-				#endif
+	}
+	#ifdef RNN_FORWARD_TIMER_2
+		LKMC_M5OPS_RESETSTATS;
+	#endif
+	for (int tt = 0; tt < _PB_NT; tt += rnn_forward_2_tile_t)
+	{
+		for (int s1t = 0; s1t < _PB_NS; s1t += rnn_forward_2_tile_s1)
+			for (int s2t = 0; s2t < _PB_NS; s2t += rnn_forward_2_tile_s2){
+			#ifdef RNN_FORWARD_TIMER_2
+				LKMC_M5OPS_DUMPSTATS;
+				if (rnn_forward_tile_count++ > 4){
+					LKMC_M5OPS_EXIT;
+				}
+				LKMC_M5OPS_RESETSTATS;
+			#endif
+			for (int t = tt; t < MIN(_PB_NT, tt+rnn_forward_2_tile_t); t++){
+				if (t > 0){
 					for (int s1 = s1t; s1 < MIN(_PB_NS, s1t+rnn_forward_2_tile_s1); s1++)
 						for (int s2 = s2t; s2 < MIN(_PB_NS, s2t+rnn_forward_2_tile_s2); s2++){
 							s_F[t][s1] += W[s1][s2] * s_F[t - 1][s2];
 						}
+				}
 			}
 		}
-		#ifdef RNN_FORWARD_TIMER_2
-			LKMC_M5OPS_DUMPSTATS;
-		#endif
-		#ifdef RNN_FORWARD_TIMER_3
-			LKMC_M5OPS_RESETSTATS;
-		#endif
+	}
+	#ifdef RNN_FORWARD_TIMER_3
+		LKMC_M5OPS_RESETSTATS;
+	#endif
+	for (int tt = 0; tt < _PB_NT; tt += rnn_forward_3_tile_t)
+	{
 		for (int qt = 0; qt < _PB_NQ; qt += rnn_forward_3_tile_q)
 			for (int s1t = 0; s1t < _PB_NS; s1t += rnn_forward_3_tile_s1){
 				#ifdef RNN_FORWARD_TIMER_3
@@ -246,14 +255,12 @@ static void rnn_forward(int nt, int np, int ns, int nq,
 					}
 					LKMC_M5OPS_RESETSTATS;
 				#endif
+			for (int t = tt; t < MIN(_PB_NT, tt+rnn_forward_3_tile_t); t++)
 				for (int q = qt; q < MIN(_PB_NQ, qt+rnn_forward_3_tile_q); q++)
 					for (int s1 = s1t; s1 < MIN(_PB_NS, s1t+rnn_forward_3_tile_s1); s1++){
 						out_F[t][q] += V[q][s1] * s_F[t][s1];
 					}
 		}
-		#ifdef RNN_FORWARD_TIMER_3
-			LKMC_M5OPS_DUMPSTATS;
-		#endif
 	}
 #pragma endscop
 }

@@ -133,10 +133,10 @@ for (int nt = 0; nt < _PB_NN; nt+=sumpool2d_forward_tile_n)
 					LKMC_M5OPS_RESETSTATS;
 				#endif
 				for (int n = nt; n < MIN(_PB_NN, nt+sumpool2d_forward_tile_n); n++)
-					for (int d = dt; d < MIN(_PB_ND,dt+sumpool2d_forward_tile_d); d++)
-						for (int r = rt; r < MIN(_PB_NR,rt+sumpool2d_forward_tile_r); r++)
+					for (int d = dt; d < MIN(_PB_ND, dt+sumpool2d_forward_tile_d); d++)
+						for (int r = rt; r < MIN(_PB_NR, rt+sumpool2d_forward_tile_r); r++)
 						{
-							for (int c = ct; c < MIN(_PB_NC,ct+sumpool2d_forward_tile_c); c++)
+							for (int c = ct; c < MIN(_PB_NC, ct+sumpool2d_forward_tile_c); c++)
 								{
 									DATA_TYPE val = 0;
 									for (int h = sh * r; h < MIN(sh * r + dh, ih); h++)
