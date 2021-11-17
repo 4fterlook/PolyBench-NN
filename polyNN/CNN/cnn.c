@@ -30,13 +30,16 @@
 /* Default data type is double, default size is N=1024. */
 #include "cnn.h"
 
+#define CNN_FORWARD_TIMER
+
 /* Array initialization. */
 static void init_array(int nn, int nk, int np, int nq, int nc, int nr, int ns, int nw, int nh,
 											 DATA_TYPE POLYBENCH_4D(out_F, NN, NK, NP, NQ, nn, nk, np, nq),
 											 DATA_TYPE POLYBENCH_4D(W, NK, NC, NR, NS, nk, nc, nr, ns),
-											 DATA_TYPE POLYBENCH_4D(inp_F, NN, NC, NH, NW, nn, nc, nh, nw),
-											 DATA_TYPE POLYBENCH_4D(err_in, NN, NC, NH, NW, nn, nc, nh, nw),
-											 DATA_TYPE POLYBENCH_4D(err_out, NN, NK, NP, NQ, nn, nk, np, nq))
+											 DATA_TYPE POLYBENCH_4D(inp_F, NN, NC, NH, NW, nn, nc, nh, nw)
+											//  DATA_TYPE POLYBENCH_4D(err_in, NN, NC, NH, NW, nn, nc, nh, nw),
+											//  DATA_TYPE POLYBENCH_4D(err_out, NN, NK, NP, NQ, nn, nk, np, nq)
+											 )
 {
 	int a, b, e, d;
 
@@ -46,7 +49,7 @@ static void init_array(int nn, int nk, int np, int nq, int nc, int nr, int ns, i
 				for (d = 0; d < nq; d++)
 				{
 					out_F[a][b][e][d] = (DATA_TYPE)((a * b) % nn);
-					err_out[a][b][e][d] = (DATA_TYPE)((e * d) % nk);
+					// err_out[a][b][e][d] = (DATA_TYPE)((e * d) % nk);
 				}
 
 	for (a = 0; a < nk; a++)
@@ -61,7 +64,7 @@ static void init_array(int nn, int nk, int np, int nq, int nc, int nr, int ns, i
 				for (d = 0; d < nw; d++)
 				{
 					inp_F[a][b][e][d] = (DATA_TYPE)((a * b) % nc);
-					err_in[a][b][e][d] = (DATA_TYPE)((a * b) % nc);
+					// err_in[a][b][e][d] = (DATA_TYPE)((a * b) % nc);
 				}
 }
 
@@ -93,6 +96,9 @@ static void cnn_forward(int nn, int nk, int np, int nq, int nc, int nr, int ns, 
 												DATA_TYPE POLYBENCH_4D(inp_F, NN, NC, NH, NW, nn, nc, nh, nw))
 {
 #pragma scop
+#ifdef CNN_FORWARD_TIMER
+	LKMC_M5OPS_RESETSTATS;
+#endif
 	for (int n = 0; n < _PB_NN; n++)
 		for (int k = 0; k < _PB_NK; k++)
 			for (int p = 0; p < _PB_NP; p++)
@@ -101,6 +107,9 @@ static void cnn_forward(int nn, int nk, int np, int nq, int nc, int nr, int ns, 
 						for (int r = 0; r < _PB_NR; r++)
 							for (int s = 0; s < _PB_NS; s++)
 								out_F[n][k][p][q] += W[k][c][r][s] * inp_F[n][c][NU * p + NR - r - 1][NU * q + NS - s - 1];
+#ifdef CNN_FORWARD_TIMER
+	LKMC_M5OPS_DUMPSTATS;
+#endif			
 #pragma endscop
 }
 
@@ -162,34 +171,21 @@ int main(int argc, char **argv)
 	init_array(nn, nk, np, nq, nc, nr, ns, nw, nh,
 						 POLYBENCH_ARRAY(out_F),
 						 POLYBENCH_ARRAY(W),
-						 POLYBENCH_ARRAY(inp_F),
-						 POLYBENCH_ARRAY(err_in),
-						 POLYBENCH_ARRAY(err_out));
+						 POLYBENCH_ARRAY(inp_F)
+						//  POLYBENCH_ARRAY(err_in),
+						//  POLYBENCH_ARRAY(err_out)
+						 );
 
-	/* Start timer. */
-	polybench_start_instruments;
-
-#if(LKMC_M5OPS_ENABLE)
-  LKMC_M5OPS_RESETSTATS;
-#endif
 	/* Run kernel. */
 	cnn_forward(nn, nk, np, nq, nc, nr, ns, nw, nh, nu, nv,
 							POLYBENCH_ARRAY(out_F),
 							POLYBENCH_ARRAY(W),
 							POLYBENCH_ARRAY(inp_F));
 
-	cnn_backward(nn, nk, np, nq, nc, nr, ns, nw, nh, nu, nv,
-							 POLYBENCH_ARRAY(err_out),
-							 POLYBENCH_ARRAY(W),
-							 POLYBENCH_ARRAY(err_in));
-
-#if(LKMC_M5OPS_ENABLE)
-  LKMC_M5OPS_DUMPSTATS;
-#endif
-
-	/* Stop and print timer. */
-	polybench_stop_instruments;
-	polybench_print_instruments;
+	// cnn_backward(nn, nk, np, nq, nc, nr, ns, nw, nh, nu, nv,
+	// 						 POLYBENCH_ARRAY(err_out),
+	// 						 POLYBENCH_ARRAY(W),
+	// 						 POLYBENCH_ARRAY(err_in));
 
 	/* Prevent dead-code elimination. All live-out data must be printed
 	   by the function call in argument. */
@@ -199,8 +195,8 @@ int main(int argc, char **argv)
 	POLYBENCH_FREE_ARRAY(out_F);
 	POLYBENCH_FREE_ARRAY(W);
 	POLYBENCH_FREE_ARRAY(inp_F);
-	POLYBENCH_FREE_ARRAY(err_out);
-	POLYBENCH_FREE_ARRAY(err_in);
+	// POLYBENCH_FREE_ARRAY(err_out);
+	// POLYBENCH_FREE_ARRAY(err_in);
 
 	return 0;
 }
