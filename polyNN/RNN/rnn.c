@@ -181,11 +181,20 @@ static void rnn_forward(int nt, int np, int ns, int nq,
 		{
 			for (int p = 0; p < _PB_NP; p++)
 				s_F[t][s1] += U[s1][p] * inp_F[t][p];
-
-			if (t > 0)
+		}
+	}
+	
+	for (int t = 1; t < _PB_NT; t++)
+	{
+		for (int s1 = 0; s1 < _PB_NS; s1++)
+		{
 				for (int s2 = 0; s2 < _PB_NS; s2++)
 					s_F[t][s1] += W[s1][s2] * s_F[t - 1][s2];
 		}
+	}
+
+	for (int t = 0; t < _PB_NT; t++)
+	{
 		for (int q = 0; q < _PB_NQ; q++)
 			for (int s1 = 0; s1 < _PB_NS; s1++)
 				out_F[t][q] += V[q][s1] * s_F[t][s1];
