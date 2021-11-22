@@ -32,14 +32,23 @@
 
 #include <limits.h>
 
-#define M5OPS_TIMER
+#define MAXPOOL2D_FORWARD
+#define MAXPOOL2D_FORWARD_TIMER
+
+static int maxpool2d_forward_tile_count = 0;
+
+#define maxpool2d_forward_tile_n 22 /*max size is 150 in large*/
+#define maxpool2d_forward_tile_d 14 /*max size is 120 in large*/
+#define maxpool2d_forward_tile_r 3 /*max size is 9 in large*/
+#define maxpool2d_forward_tile_c 3 /*max size is 9 in large*/
 
 /* Array initialization. */
 static void init_array(int nn, int nd, int ih, int iw, int oh, int ow,
 											 DATA_TYPE POLYBENCH_4D(out_F, NN, ND, OH, OW, nn, nd, oh, ow),
-											 DATA_TYPE POLYBENCH_4D(inp_F, NN, ND, IH, IW, nn, nd, ih, iw),
-											 DATA_TYPE POLYBENCH_4D(err_in, NN, ND, IH, IW, nn, nd, ih, iw),
-											 DATA_TYPE POLYBENCH_4D(err_out, NN, ND, OH, OW, nn, nd, oh, ow))
+											 DATA_TYPE POLYBENCH_4D(inp_F, NN, ND, IH, IW, nn, nd, ih, iw)
+											//  DATA_TYPE POLYBENCH_4D(err_in, NN, ND, IH, IW, nn, nd, ih, iw),
+											//  DATA_TYPE POLYBENCH_4D(err_out, NN, ND, OH, OW, nn, nd, oh, ow)
+											 )
 {
 	int a, b, d, e;
 
@@ -49,7 +58,7 @@ static void init_array(int nn, int nd, int ih, int iw, int oh, int ow,
 				for (e = 0; e < ow; e++)
 				{
 					out_F[a][b][d][e] = (DATA_TYPE)(a * b + d * e % nn);
-					err_out[a][b][d][e] = (DATA_TYPE)(a + b + d + e % nn);
+					// err_out[a][b][d][e] = (DATA_TYPE)(a + b + d + e % nn);
 				}
 
 	for (a = 0; a < nn; a++)
@@ -58,7 +67,7 @@ static void init_array(int nn, int nd, int ih, int iw, int oh, int ow,
 				for (e = 0; e < ih; e++)
 				{
 					inp_F[a][b][d][e] = (DATA_TYPE)(a * b + d * e % nd);
-					err_in[a][b][d][e] = (DATA_TYPE)(a + b + d + e % nd);
+					// err_in[a][b][d][e] = (DATA_TYPE)(a + b + d + e % nd);
 				}
 }
 
@@ -105,20 +114,35 @@ static void maxpool2d_forward(int nn, int nd, int ih, int iw, int ow, int oh, in
 {
 
 #pragma scop
-
-	for (int n = 0; n < _PB_NN; n++)
-		for (int d = 0; d < _PB_ND; d++)
-			for (int r = 0; r < _PB_NR; r++)
-			{
-				for (int c = 0; c < _PB_NC; c++)
-				{
-					int val = -10000000;
-					for (int h = sh * r; h < MIN(sh * r + dh, ih); h++)
-						for (int w = sw * c; w < MIN(sw * c + dw, iw); w++)
-							val = MAX(val, inp_F[n][d][h][w]);
-					out_F[n][d][r][c] = val;
-				}
-			}
+#ifdef MAXPOOL2D_FORWARD_TIMER
+		LKMC_M5OPS_RESETSTATS;
+#endif
+for (int nt = 0; nt < _PB_NN; nt+=maxpool2d_forward_tile_n)
+	for (int dt = 0; dt < _PB_ND; dt+=maxpool2d_forward_tile_d)
+		for (int rt = 0; rt < _PB_NR; rt+=maxpool2d_forward_tile_r)
+			for (int ct = 0; ct < _PB_NC; ct+=maxpool2d_forward_tile_c){
+				#ifdef MAXPOOL2D_FORWARD_TIMER
+					LKMC_M5OPS_DUMPSTATS;
+					if (maxpool2d_forward_tile_count++ > 4){
+						printf("Tile number: %d\n", maxpool2d_forward_tile_count);
+						LKMC_M5OPS_EXIT;
+					}
+					LKMC_M5OPS_RESETSTATS;
+				#endif
+				for (int n = nt; n < MIN(_PB_NN, nt+maxpool2d_forward_tile_n); n++)
+					for (int d = dt; d < MIN(_PB_ND,dt+maxpool2d_forward_tile_d); d++)
+						for (int r = rt; r < MIN(_PB_NR,rt+maxpool2d_forward_tile_r); r++)
+						{
+							for (int c = ct; c < MIN(_PB_NC,ct+maxpool2d_forward_tile_c); c++)
+							{
+								DATA_TYPE val = -10000000;
+								for (int h = sh * r; h < MIN(sh * r + dh, ih); h++)
+									for (int w = sw * c; w < MIN(sw * c + dw, iw); w++)
+										val = MAX(val, inp_F[n][d][h][w]);
+								out_F[n][d][r][c] = val;
+							}
+						}
+	}
 
 #pragma endscop
 }
@@ -167,56 +191,44 @@ int main(int argc, char **argv)
 	int oh = OH;
 	int ow = OW;
 
+
 	/* Variable declaration/allocation. */
 	POLYBENCH_4D_ARRAY_DECL(inp_F, DATA_TYPE, NN, ND, IH, IW, nn, nd, ih, iw);
 	POLYBENCH_4D_ARRAY_DECL(out_F, DATA_TYPE, NN, ND, OH, OW, nn, nd, oh, ow);
-	POLYBENCH_4D_ARRAY_DECL(err_in, DATA_TYPE, NN, ND, IH, IW, nn, nd, ih, iw);
-	POLYBENCH_4D_ARRAY_DECL(err_out, DATA_TYPE, NN, ND, OH, OW, nn, nd, oh, ow);
+	// POLYBENCH_4D_ARRAY_DECL(err_in, DATA_TYPE, NN, ND, IH, IW, nn, nd, ih, iw);
+	// POLYBENCH_4D_ARRAY_DECL(err_out, DATA_TYPE, NN, ND, OH, OW, nn, nd, oh, ow);
 
 	/* Initialize array(s). */
 	init_array(nn, nd, ih, iw, oh, ow,
 						 POLYBENCH_ARRAY(out_F),
-						 POLYBENCH_ARRAY(inp_F),
-						 POLYBENCH_ARRAY(err_in),
-						 POLYBENCH_ARRAY(err_out));
+						 POLYBENCH_ARRAY(inp_F)
+						//  POLYBENCH_ARRAY(err_in),
+						//  POLYBENCH_ARRAY(err_out)
+						 );
 
-	/* Start timer. */
-#ifndef M5OPS_TIMER
-	polybench_start_instruments;
-#else
-  LKMC_M5OPS_RESETSTATS;
-#endif
-
+#if defined(MAXPOOL2D_FORWARD)
 	/* Run kernel. */
 	maxpool2d_forward(nn, nd, ih, iw, oh, ow, dh, dw, sh, sw,
 										POLYBENCH_ARRAY(inp_F),
 										POLYBENCH_ARRAY(out_F));
-
-	/*maxpool2d_backward(nn, nd, ih, iw, oh ,ow, dh, dw, sh, sw,
+#endif
+#if defined(MAXPOOL2D_BACKWARD)
+	maxpool2d_backward(nn, nd, ih, iw, oh ,ow, dh, dw, sh, sw,
 			POLYBENCH_ARRAY(inp_F),
 			POLYBENCH_ARRAY(out_F),
 			POLYBENCH_ARRAY(err_in),
 			POLYBENCH_ARRAY(err_out)); 
-	*/
-
-	/* Stop and print timer. */
-#ifndef M5OPS_TIMER
-	polybench_stop_instruments;
-	polybench_print_instruments;
-#else
-  LKMC_M5OPS_DUMPSTATS;
 #endif
-
 	/* Prevent dead-code elimination. All live-out data must be printed
 	   by the function call in argument. */
 	polybench_prevent_dce(print_array_fwd(nn, nd, ow, oh, POLYBENCH_ARRAY(out_F)));
-	polybench_prevent_dce(print_array_bwd(nn, nd, iw, ih, POLYBENCH_ARRAY(err_in)));
+	// polybench_prevent_dce(print_array_bwd(nn, nd, iw, ih, POLYBENCH_ARRAY(err_in)));
 
 	/* Be clean. */
 	POLYBENCH_FREE_ARRAY(out_F);
 	POLYBENCH_FREE_ARRAY(inp_F);
-	POLYBENCH_FREE_ARRAY(err_in);
-	POLYBENCH_FREE_ARRAY(err_out);
+	// POLYBENCH_FREE_ARRAY(err_in);
+	// POLYBENCH_FREE_ARRAY(err_out);
 
 	return 0;
 }
