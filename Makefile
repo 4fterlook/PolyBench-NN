@@ -34,10 +34,10 @@ $(OUTS) :$(OUT_DIR)%.out : %.c utilities/polybench.c
 	@mkdir -p $(dir $@)
 ifeq ($(TARGET_CPU), aarch64)
 	@echo "building $< in arm"
-	$(CC) $(ARM_CROSS_FLAGS) -I utilities/ -I $(dir $<) $(BENCH_SIZE) $(POLLY_FLAGS) $< utilities/polybench.c -o $@ $(LD_FLAGS)
+	@$(CC) $(ARM_CROSS_FLAGS) -I utilities/ -I $(dir $<) $(BENCH_SIZE) $(POLLY_FLAGS) $< utilities/polybench.c -o $@ $(LD_FLAGS)
 else ifeq ($(TARGET_CPU), x86)
 	@echo "building $< in x86"
-	$(CC) -I utilities/ -I $(dir $<) $(BENCH_SIZE) $(POLLY_FLAGS) $< utilities/polybench.c -o $@ $(LD_FLAGS)
+	@$(CC) -I utilities/ -I $(dir $<) $(BENCH_SIZE) $(POLLY_FLAGS) $< utilities/polybench.c -o $@ $(LD_FLAGS)
 else
 	@(echo "Unknown cpu target, not supported yet."; exit 1)
 endif
