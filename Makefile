@@ -1,7 +1,7 @@
 .PHONY: all clean
 
 CC := clang
-POLY_CC := /home/chao/src/pet/pet
+POLY_CC := /home/chao/src/ppcg/pprem
 TARGET_CPU ?= x86
 
 OUT_DIR := cache_based/
@@ -13,7 +13,7 @@ SRC_FILES := $(shell find ./polyNN -name "*.c")
 SRC_FILES := $(sort $(SRC_FILES))
 
 OUTS := $(addprefix $(OUT_DIR), $(SRC_FILES:.c=.out))
-SCOPS := $(addprefix $(SCOP_DIR), $(SRC_FILES:.c=.scop))
+SCOPS := $(addprefix $(SCOP_DIR), $(subst ./, ,$(SRC_FILES:.c=.scop)))
 
 
 # SYSROOT := "--sysroot=/usr/aarch64-linux-gnu/"
@@ -21,8 +21,8 @@ CROSS_INCLUDE_FLAGS := -I /usr/aarch64-linux-gnu/include/
 CROSS_LD_FLAGS := -B /usr/lib/gcc-cross/aarch64-linux-gnu/9 -L /usr/lib/gcc-cross/aarch64-linux-gnu/9 -L /usr/aarch64-linux-gnu/lib
 ARM_CROSS_FLAGS := -target aarch64-linux-gnu $(CROSS_INCLUDE_FLAGS) $(CROSS_LD_FLAGS)
 
-BENCH_SIZE ?= -DLARGE_DATASET
-POLLY_FLAGS = -DPOLYBENCH_USE_SCALAR_LB 
+BENCH_SIZE ?= -D LARGE_DATASET
+POLLY_FLAGS = -D POLYBENCH_USE_SCALAR_LB 
 # POLLY_FLAGS += -DPOLYBENCH_TIME -DPOLYBENCH_DUMP_ARRAYS
 CC_FLAGS := -O3 
 CC_FLAGS += -mllvm -polly 
@@ -51,10 +51,9 @@ else
 endif
 
 $(SCOPS) :$(SCOP_DIR)%.scop : %.c utilities/polybench.c
-	@echo "$@"
 	@mkdir -p $(dir $@)
 	@echo "generating polyhedral info for $<"
-	@$(POLY_CC) -I utilities/ -I $(dir $<) $(BENCH_SIZE) $(POLLY_FLAGS) $< > $@
+	@$(POLY_CC) -I utilities/ -I $(dir $<) $(BENCH_SIZE) $(POLLY_FLAGS) -o $@ $< 
 
 clean :
 	-rm -rf $(OUT_DIR)
