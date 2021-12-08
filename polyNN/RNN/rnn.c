@@ -219,7 +219,7 @@ static void rnn_backward(int nt, int np, int ns, int nq, int bptt_trunc,
 			for (int q = 0; q < _PB_NQ; q++)
 				delTA[s] += V[q][s] * err_out[t][q];
 		}
-		for (int step = t + 1; step > MAX(0, t - bptt_trunc); step--)
+		for (int step = t + 1; step > MAX(0, t - BT); step--)
 		{
 			if (step > 0)
 				for (int r = 0; r < _PB_NS; r++)
